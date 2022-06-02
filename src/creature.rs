@@ -6,26 +6,14 @@
  * ===============================================================================*/
 
 
+ /// Module representing creatures of different types
 pub mod creature_v1 {
 
+    // Define external crates to use in this module
     use rand::Rng;
-    // use nalgebra as na;
-    // use crate::matrix_math;
 
-    const DEFAULT_ENERGY_LEVEL : usize = 100;
+    pub const DEFAULT_ENERGY_LEVEL : usize = 100;
 
-    /// Top level function to instantiate a new creature and return it
-    pub fn get_new_creature(id : usize) -> Creature {
-        let creat = Creature {
-            brain : get_new_brain(),
-            creature_id : id,
-            position : [0; 2],
-            energy : DEFAULT_ENERGY_LEVEL,
-            age : 0,
-        };
-
-        return creat;
-    }
 
     /// Define the actual creature
     pub struct Creature {
@@ -48,6 +36,17 @@ pub mod creature_v1 {
 
     impl Creature {
 
+        /// Constructor returns creature instance w/ default values
+        pub fn new(id : usize) -> Creature {
+            return Creature {
+                brain : get_new_brain(),
+                creature_id : id,
+                position : [0; 2],
+                energy : DEFAULT_ENERGY_LEVEL,
+                age : 0,
+            };
+        }
+
         // Sense surroundings (populate the input neurons)
         pub fn sense_surroundings(&self) {
 
@@ -56,11 +55,21 @@ pub mod creature_v1 {
         // Perform next action (evaluate neural network and decide on next action based on output)
         // Perform any environmental actions like eating nearby food/reproducing/fighting
         pub fn perform_next_action(&mut self) {
+            // TODO: Check the surroundings to see whether we need to take any environment specific
+            // actions such as eating adjacent food, reproducing, or dying
+
+            // Otherwise, evaluate the brain network based on the current state of the input neurons
+            // To check what our next action will be
             self.brain.evaluate_network();
+
+            // Show results!
             self.brain.show();
+
+            // Get the value of the action to be taken
+            let (output_idx, output_val) = self.brain.get_highest_output_neuron();
+            println!("Highest output neuron is idx {} w/ value {}", output_idx, output_val);
         }
 
-        // Check new surroundings for food
 
 
     }
@@ -200,42 +209,18 @@ pub mod creature_v1 {
 
 
         /// Evaluate the neural network with the inputs previously provided to `set_input`
-        /// Return a slice that points to the output neuron values
         pub fn evaluate_network(&mut self) {
             // For each layer starting at second layer (input values are given in first layer)
             for layer_num in 1..NUM_LAYERS {
 
+                // To start, calculate some parameters that will allow us to compute the new neuron values
                 let prev_layer_start_node = self.layer_to_starting_node(layer_num - 1);
                 let curr_layer_start_node = self.layer_to_starting_node(layer_num);
                 let num_nodes_curr_layer = LAYER_SIZES[layer_num];
                 let num_nodes_prev_layer = LAYER_SIZES[layer_num-1];
-
-                println!("prev_layer = {} curr_layer = {} nodes_prev = {} curr_nodes = {}", prev_layer_start_node, curr_layer_start_node, num_nodes_prev_layer, num_nodes_curr_layer);
-
-                // construct matrix of weights: weights[prev_node..curr_node][num_nodes_curr_layer]
-                // let weights_slice = &self.weights[prev_layer_start_node..curr_layer_start_node][0..num_nodes_curr_layer];
-                // let weights_slice = &self.weights[prev_layer_start_node..curr_layer_start_node];
-
-                // let weight_start_idx = self.weights_idx(prev_layer_start_node, 0);
-                // let weight_end_idx = self.weights_idx(curr_layer_start_node, 0);
-                // let weights_flat = &self.weights_flat[weight_start_idx..weight_end_idx];
-                // let weights_mat = na::DMatrix::from_row_slice(num_nodes_prev_layer, num_nodes_curr_layer, weights_slice);
-                
-                // construct array of values from previous layer
-                // let val_slice = &self.values[prev_layer_start_node..curr_layer_start_node];
-                // let val_vec = na::DVector::from_column_slice(val_slice);
-
-                // construct array of bias values for current layer
                 let next_layer_start_node = curr_layer_start_node + num_nodes_curr_layer;
-                // let bias_slice = &self.biases[curr_layer_start_node..next_layer_start_node];
-                // let bias_vec = na::DVector::from_column_slice(bias_slice);
 
-                // Do the linear algebras!
-                // let new_vals = &self.values[curr_layer_start_node..next_layer_start_node];
-                // matrix_math::matrix_vec_mult::<isize, MAX_CONNECTIONS_PER_NODE, MAX_CONNECTIONS_PER_NODE>(new_vals, weights_slice, val_slice);
-                // println!("{:?}", weights_mat * val_vec + bias_vec);
-                // values = W * a + b
-                // matrix_math::matrix_vec_mult_flat(new_vals, weights_flat, val_slice, num_nodes_curr_layer, num_nodes_prev_layer, MAX_CONNECTIONS_PER_NODE);
+                // println!("prev_layer = {} curr_layer = {} nodes_prev = {} curr_nodes = {}", prev_layer_start_node, curr_layer_start_node, num_nodes_prev_layer, num_nodes_curr_layer);
 
                 // Perform matrix multiplication to calculate the new values in each of the nodes in this current layer
                 for row in curr_layer_start_node..next_layer_start_node {
@@ -272,7 +257,33 @@ pub mod creature_v1 {
         }
 
 
-        pub fn get_output(&self, output_neuron_id : usize) {
+        /// Get the computed value of the requested output neuron (node)
+        pub fn get_output_val(&self, output_node : usize) -> isize {
+            let output_layer_start_node = self.layer_to_starting_node(NUM_LAYERS-1);
+            return self.values[output_layer_start_node + output_node];
+        }
+
+        /// Get the ID of the output neuron with the highest value as well as the actual value
+        /// This will be called after evaluate_network and corresponds to the action the creature 
+        /// will take
+        pub fn get_highest_output_neuron(&self) -> (usize, isize) {
+            let output_layer_start_node = self.layer_to_starting_node(NUM_LAYERS-1);
+            let mut max_idx : usize = usize::MAX;
+            let mut max_val : isize = isize::MIN;
+
+            for (idx, val) in self.values[output_layer_start_node..NUM_NODES].iter().enumerate() {
+                if *val > max_val {
+                    max_idx = idx;
+                    max_val = *val;
+                }
+            }
+
+            // Sanity check output
+            if max_idx == usize::MAX {
+                panic!("Max value in output neuron not found or no output neurons defined?");
+            }
+
+            return (max_idx, max_val);
         }
 
 
@@ -287,7 +298,7 @@ pub mod creature_v1 {
             //     println!();
             // }
 
-            println!("WEIGHTS FLAT");
+            println!("\nWEIGHTS FLAT");
             for node in 0..NUM_NODES {
                 for dst_idx in 0..MAX_CONNECTIONS_PER_NODE {
                     print!(" {:6}", self.weights_flat[self.weights_idx(node, dst_idx)]);
