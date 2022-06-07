@@ -9,8 +9,9 @@
 mod creature;
 mod environment;
 // mod matrix_math;
-use creature::creature_v1::*;
+use creature::*;
 use environment::*;
+use std::io;
 
 
 
@@ -18,13 +19,57 @@ use environment::*;
 fn main() {
 
     // Spawn one creature
-    let mut creature = Creature::new(1);
-    creature.brain.show();
-    creature.perform_next_action();
-    creature.brain.show();
+    // let mut creature = CreatureV1::new(1);
+    // creature.brain.show();
+    // creature.perform_next_action();
+    // creature.brain.show();
 
-    // Ok, now test the environment
-    let env = EnvironmentV1::new();
+    
+    test_env_v1();
+
+}
+
+
+const help_text : &str = "
+h = help
+q = quit
+d = display the current state of the environment
+p <creature_id> = print stats for the given creature id
+";
+
+
+/// Test of the V1 2d environment simulation
+fn test_env_v1() {
+
+    // Allocate the env
+    let mut env = EnvironmentV1::new();
+
+    // Show initial state
     env.show();
 
+    loop {
+
+        // Prompt for what next action should be
+        println!("Action (h for help): ");
+        let mut choice = String::new();
+        let res = io::stdin().read_line(&mut choice);
+        match res {
+            Err(e) => {
+                println!("Error getting input...{}", e);
+                continue;
+            }
+            Ok(_num_chars) => {},
+        }
+
+        // Successfully read a line, handle input!
+        let choice_str = choice.trim();
+        match choice_str {
+            "h" => println!("{}", help_text),
+            "p" => env.print_creature(0), 
+            "d" => env.show(),
+            "n" => env.advance_step(),
+            "q" => break,
+            _ => println!("Invalid input {}", choice_str),
+        }
+    }
 }
