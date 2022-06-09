@@ -5,16 +5,21 @@
  * Description: Includes all code that describes a single creature in the 2D sim
  * ===============================================================================*/
 
-
-
 // Define external crates to use in this module
 use rand::Rng;
 use std::fmt::Debug;
 
+//===============================================================================
+// CONSTANTS
+//===============================================================================
 pub const DEFAULT_ENERGY_LEVEL : usize = 20;
+pub const MAX_POSSIBLE_ENERGY : usize = 100;
 
-const DEBUG : usize = 1;
+const DEBUG_LEVEL : usize = 1;
 
+
+
+/// Defines the possible actions that a creature of any type can take
 #[derive(Copy, Clone, Debug)]
 pub enum CreatureActions {
     MoveUp,
@@ -22,9 +27,10 @@ pub enum CreatureActions {
     MoveLeft,
     MoveRight,
     Stay,
-    // Kill,
+    // Kill, //....soon
 }
 
+/// Defines all possible input neurons to a creature
 #[derive(Copy, Clone)]
 pub enum CreatureInputs {
     Unused,
@@ -36,6 +42,14 @@ pub enum CreatureInputs {
     VisionRight,
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub struct CreaturePosition {
+    pub x : usize, // x position of the creature
+    pub y : usize, // y position of the creature
+}
+
+
+// Ensure we don't have to re-type the actions and inputs constantly
 use CreatureActions::*;
 use CreatureInputs::*;
 
@@ -49,7 +63,7 @@ pub struct CreatureV1 {
     pub id : usize,
 
     /// Current position in 2d coordinates x, y
-    pub position : [usize; 2],
+    pub position : CreaturePosition,
 
     /// Current energy level
     pub energy : usize,
@@ -57,6 +71,8 @@ pub struct CreatureV1 {
     /// Current age of the creature in time-steps 
     pub age : usize,
 
+    input_neuron_types : [CreatureInputs; NUM_INPUT_NODES],
+    output_neuron_types : [CreatureActions; NUM_OUTPUT_NODES],
 }
 
 impl CreatureV1 {
@@ -66,26 +82,49 @@ impl CreatureV1 {
         let mut temp_creature = CreatureV1 {
             brain : BrainV1::new(),
             id : id,
-            position : [0; 2],
+            position : CreaturePosition {x : 0, y : 0},
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
+            input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
+            output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
         };
 
-        temp_creature.brain.assign_input_node_types([VisionUp, VisionDown, VisionLeft, VisionRight]);
-        temp_creature.brain.assign_output_node_types([Stay, MoveUp, MoveDown, MoveLeft, MoveRight]);
+        temp_creature.brain.assign_input_node_types(temp_creature.input_neuron_types);
+        temp_creature.brain.assign_output_node_types(temp_creature.output_neuron_types);
 
         return temp_creature;
     }
 
     /// Set position in the board
     pub fn set_position(&mut self, x: usize, y: usize) {
-        self.position[0] = x;
-        self.position[1] = y;
+        self.position.x = x;
+        self.position.y = y;
     }
 
-    // Sense surroundings (populate the input neurons)
-    pub fn sense_surroundings(&self) {
+    /// Sense surroundings (populate the input neurons)
+    pub fn sense_surroundings(&mut self) {
+        for (input_neuron_idx, neuron_type) in self.input_neuron_types.iter().enumerate() {
+            match neuron_type {
+                Age => self.brain.set_input(input_neuron_idx, self.age as isize),
+                Energy => self.brain.set_input(input_neuron_idx, self.energy as isize),
+                _ => {}
+            } 
+        }
 
+    }
+
+    /// Increment the age of the creature by one time step
+    pub fn increment_age(&mut self) {
+        self.age += 1;
+    }
+
+    /// Eat a piece of food that gives it the specified amount of energy
+    pub fn eat_food(&mut self, food_energy : usize) {
+        if self.energy + food_energy > MAX_POSSIBLE_ENERGY {
+            self.energy = MAX_POSSIBLE_ENERGY;
+        } else {
+            self.energy += food_energy;
+        }
     }
 
     // Perform next action (evaluate neural network and decide on next action based on output)
@@ -93,7 +132,7 @@ impl CreatureV1 {
     pub fn perform_next_action(&mut self) -> CreatureActions {
         // TODO: Check the surroundings to see whether we need to take any environment specific
         // actions such as eating adjacent food, reproducing, or dying
-        if (self.energy != 0) {
+        if self.energy != 0 {
             self.energy -= 1;
         } else {
             println!("Creature {} is ded... :( ", self.id);
@@ -106,13 +145,13 @@ impl CreatureV1 {
         self.brain.evaluate_network();
 
         // Show results!
-        if DEBUG > 1 {
+        if DEBUG_LEVEL > 1 {
             self.brain.show();
         }
 
         // Get the value of the action to be taken
         let action = self.brain.get_current_action();
-        if DEBUG > 0 {
+        if DEBUG_LEVEL > 0 {
             println!("Next Action is {:?}", action);
         }
 
@@ -126,13 +165,11 @@ impl CreatureV1 {
 
 // Define layers and each layer's size
 pub const NUM_LAYERS : usize = 3;
-pub const LAYER_SIZES : [usize; NUM_LAYERS] = [4, 4, 5];
+pub const LAYER_SIZES : [usize; NUM_LAYERS] = [6, 4, 5];
 pub const NUM_INPUT_NODES : usize = LAYER_SIZES[0];
 pub const NUM_OUTPUT_NODES : usize = LAYER_SIZES[NUM_LAYERS-1];
-pub const NUM_NODES : usize = 13; // Total number of nodes in the network. Must be consistent with LAYER_SIZES
-pub const MAX_CONNECTIONS_PER_NODE : usize = 4; // This must be greater than or equal to max layer size
-
-// Define input/output node nums
+pub const NUM_NODES : usize = 15; // Total number of nodes in the network. Must be consistent with LAYER_SIZES
+pub const MAX_CONNECTIONS_PER_NODE : usize = 6; // This must be greater than or equal to max layer size
 
 // Define min/max values that input neurons can have and that weights/biases can have
 pub const VAL_MIN : isize = -1000;
@@ -360,7 +397,7 @@ impl BrainV1 {
             panic!("Max value in output neuron not found or no output neurons defined?");
         }
 
-        if DEBUG > 2 {
+        if DEBUG_LEVEL > 2 {
             println!("Highest output neuron is idx {} w/ value {}", max_idx, max_val);
         }
 

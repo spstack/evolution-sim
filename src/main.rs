@@ -8,8 +8,6 @@
 
 mod creature;
 mod environment;
-// mod matrix_math;
-use creature::*;
 use environment::*;
 use std::io;
 
@@ -30,11 +28,13 @@ fn main() {
 }
 
 
+// Help string for the command line interface
 const help_text : &str = "
 h = help
 q = quit
 d = display the current state of the environment
 p <creature_id> = print stats for the given creature id
+n = next step. Run one simulation step
 ";
 
 

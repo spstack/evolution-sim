@@ -10,14 +10,17 @@ use rand::Rng;
 //===============================================================================
 // CONSTANTS
 //===============================================================================
+pub const DEBUG_LEVEL : usize = 2;
+
 pub const ENV_X_SIZE : usize = 25;
 pub const ENV_Y_SIZE : usize = 25;
 pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
 
 pub const MAX_NUM_CREATURES : usize = 20;
 
-pub const NUM_START_CREATURES : usize = 1;
+pub const NUM_START_CREATURES : usize = 10;
 pub const NUM_START_FOOD : usize = 10;
+pub const ENERGY_PER_FOOD_PIECE : usize = 20;
 
 //===============================================================================
 // Environment V1 Declarations
@@ -31,6 +34,7 @@ pub enum SpaceStates {
     FoodSpace,                  // Space has a food in it
 }
 
+/// Structure representing a very simple 2-D environment
 pub struct EnvironmentV1 {
 
     // Vector containing all creature instances
@@ -39,11 +43,12 @@ pub struct EnvironmentV1 {
     // Contains the states of each space.
     pub positions : [[SpaceStates; ENV_Y_SIZE]; ENV_X_SIZE],
 
-    time_step : usize,  // Represents the current time step in the sim
+    // Represents the current time step in the sim
+    time_step : usize,  
 }
 
 
-/// A very simple 2-D Environment
+/// Implementation of EnvironmentV1
 impl EnvironmentV1 {
 
     /// Constructor for new environment instance
@@ -79,7 +84,6 @@ impl EnvironmentV1 {
 
         }
 
-
         // Return a new instance of the environment
         return EnvironmentV1 {
             creatures : temp_creature_vec,
@@ -110,63 +114,161 @@ impl EnvironmentV1 {
         println!("Creature = X\nFood = #");
     }
 
+    fn handle_creature_action(&mut self, creature: &mut CreatureV1, action : CreatureActions) {
+        let mut next_position : CreaturePosition = creature.position.clone();
+
+        // Now handle the action
+        match action {
+            CreatureActions::MoveUp => {
+                if next_position.y > 0 {
+                    next_position.y -= 1;
+                }
+            },
+
+            CreatureActions::MoveDown => {
+                // Check if move would go beyond the bounds of this board
+                if next_position.y < self.positions.len() - 1 {
+                    next_position.y += 1;
+                }
+            },
+
+            CreatureActions::MoveLeft => {
+                if next_position.x > 0 {
+                    next_position.x -= 1;
+                }
+            },
+
+            CreatureActions::MoveRight => {
+                // Check if move would go beyond the bounds of this board
+                if next_position.x < self.positions[0].len() - 1 {
+                    next_position.x += 1;
+                }
+            },
+
+            _ => {
+                println!("Unhandled action {:?}", action);
+                next_position = creature.position.clone();
+            }
+        }
+
+        // If there was an update to the position, check for collisions, food, etc...
+        if next_position != creature.position {
+            println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+
+            match self.positions[next_position.x][next_position.y] {
+                // If next space is blank, perform the move
+                SpaceStates::BlankSpace => {
+                    self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                    self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                }
+
+                // If next space is food, then eat it!
+                SpaceStates::FoodSpace => {
+                    self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                    self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                    creature.eat_food(ENERGY_PER_FOOD_PIECE);
+                }
+
+                // Otherwise, do nothing...
+                _ => {}
+            }
+            println!("moved...");
+        }
+
+    }
 
     /// Advance one "day"!
     pub fn advance_step(&mut self) {
 
+        // Print some info about the env
+        if DEBUG_LEVEL > 0 {
+            println!("===================== STEP {} ===============", self.time_step);
+            println!("Creatures: {}", self.creatures.len());
+            println!("");
+        }
+
         // Evaluate the next action for each creature
         for creature in &mut self.creatures {
+            // First update the 'senses' of the creature
+            creature.sense_surroundings();
+
+            // Then actually evaluate the brain net to get the next action it'll take
             let action : CreatureActions = creature.perform_next_action();
 
-            println!("Action = {:?}", action);
-
             // Now handle the action
+            let mut next_position : CreaturePosition = creature.position.clone();
+
             match action {
                 CreatureActions::MoveUp => {
-                    let [x, mut y] = creature.position;
-                    self.positions[x][y] = SpaceStates::BlankSpace;
-                    if y > 0 {
-                        y -= 1;
-                        creature.position[1] -= 1;
+                    if next_position.y > 0 {
+                        next_position.y -= 1;
                     }
-                    self.positions[x][y] = SpaceStates::CreatureSpace(creature.id);
                 },
 
                 CreatureActions::MoveDown => {
-                    let [x, mut y] = creature.position;
-                    self.positions[x][y] = SpaceStates::BlankSpace;
-                    if y < ENV_Y_SIZE-1 {
-                        y += 1;
-                        creature.position[1] += 1;
+                    // Check if move would go beyond the bounds of this board
+                    if next_position.y < self.positions.len() - 1 {
+                        next_position.y += 1;
                     }
-                    self.positions[x][y] = SpaceStates::CreatureSpace(creature.id);
                 },
 
                 CreatureActions::MoveLeft => {
-                    let [mut x, y] = creature.position;
-                    self.positions[x][y] = SpaceStates::BlankSpace;
-                    if x > 0 {
-                        x -= 1;
-                        creature.position[0] -= 1;
+                    if next_position.x > 0 {
+                        next_position.x -= 1;
                     }
-                    self.positions[x][y] = SpaceStates::CreatureSpace(creature.id);
                 },
 
                 CreatureActions::MoveRight => {
-                    let [mut x, y] = creature.position;
-                    self.positions[x][y] = SpaceStates::BlankSpace;
-                    if x < ENV_X_SIZE-1 {
-                        x += 1;
-                        creature.position[0] += 1;
+                    // Check if move would go beyond the bounds of this board
+                    if next_position.x < self.positions[0].len() - 1 {
+                        next_position.x += 1;
                     }
-                    self.positions[x][y] = SpaceStates::CreatureSpace(creature.id);
                 },
 
-                _ => println!("Unhandled action {:?}", action),
+                _ => {
+                    println!("Unhandled action {:?}", action);
+                    next_position = creature.position.clone();
+                }
             }
+
+            // If there was an update to the position, check for collisions, food, etc...
+            if next_position != creature.position {
+                println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+
+                // Detect collisions in next space
+                match self.positions[next_position.x][next_position.y] {
+                    // If next space is blank, perform the move
+                    SpaceStates::BlankSpace => {
+                        self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                        creature.set_position(next_position.x, next_position.y);
+                    }
+
+                    // If next space is food, then eat it!
+                    SpaceStates::FoodSpace => {
+                        self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                        creature.eat_food(ENERGY_PER_FOOD_PIECE);
+                        creature.set_position(next_position.x, next_position.y);
+                    }
+
+                    // Otherwise, do nothing...
+                    _ => {}
+                }
+            }
+
+
         }
 
-        self.show();
+        
+        // If proper debug level show the env after each step
+        if DEBUG_LEVEL > 1 {
+            self.show();
+        }
+
+        // Increment the time step counter
+        self.time_step += 1;
+
     }
 
 
