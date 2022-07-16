@@ -16,20 +16,13 @@ use std::io;
 /// Main application entry point
 fn main() {
 
-    // Spawn one creature
-    // let mut creature = CreatureV1::new(1);
-    // creature.brain.show();
-    // creature.perform_next_action();
-    // creature.brain.show();
-
-    
     test_env_v1();
 
 }
 
 
 // Help string for the command line interface
-const help_text : &str = "
+const HELP_TEXT : &str = "
 h = help
 q = quit
 d = display the current state of the environment
@@ -64,7 +57,7 @@ fn test_env_v1() {
         // Successfully read a line, handle input!
         let choice_str = choice.trim();
         match choice_str {
-            "h" => println!("{}", help_text),
+            "h" => println!("{}", HELP_TEXT),
             "p" => env.print_creature(0), 
             "d" => env.show(),
             "n" => env.advance_step(),

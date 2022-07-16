@@ -14,7 +14,7 @@ pub const DEBUG_LEVEL : usize = 2;
 
 pub const ENV_X_SIZE : usize = 25;
 pub const ENV_Y_SIZE : usize = 25;
-pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
+// pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
 
 pub const MAX_NUM_CREATURES : usize = 20;
 
@@ -102,7 +102,7 @@ impl EnvironmentV1 {
             for x in 0..ENV_X_SIZE {
                 match self.positions[x][y] {
                     SpaceStates::BlankSpace => print!("   "),
-                    SpaceStates::CreatureSpace(_id) => print!(" X "),
+                    SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
                     SpaceStates::FoodSpace => print!(" # "),
                 }
             }
@@ -111,7 +111,7 @@ impl EnvironmentV1 {
         }
         println!("-----------------------------------------------------------------------------");
         println!("Key:");
-        println!("Creature = X\nFood = #");
+        println!("Creature = <id num>\nFood = #");
     }
 
     fn handle_creature_action(&mut self, creature: &mut CreatureV1, action : CreatureActions) {
@@ -155,16 +155,18 @@ impl EnvironmentV1 {
         if next_position != creature.position {
             println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
 
+            let pos = creature.position.clone();
+
             match self.positions[next_position.x][next_position.y] {
                 // If next space is blank, perform the move
                 SpaceStates::BlankSpace => {
-                    self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                    self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                     self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
                 }
 
                 // If next space is food, then eat it!
                 SpaceStates::FoodSpace => {
-                    self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                    self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                     self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
                     creature.eat_food(ENERGY_PER_FOOD_PIECE);
                 }
@@ -194,6 +196,16 @@ impl EnvironmentV1 {
 
             // Then actually evaluate the brain net to get the next action it'll take
             let action : CreatureActions = creature.perform_next_action();
+
+            // if the creature is dead, don't bother handling the next action. Will be removed
+            if creature.is_dead() {
+                println!("Creature {} is ded... :( | age = {}", creature.id, creature.age);
+                continue;
+            }
+
+            if DEBUG_LEVEL > 0 {
+                println!("Next Action for creature {} is {:?} | age = {} | energy = {}", creature.id, action, creature.age, creature.energy);
+            }
 
             // Now handle the action
             let mut next_position : CreaturePosition = creature.position.clone();
@@ -225,6 +237,8 @@ impl EnvironmentV1 {
                     }
                 },
 
+                CreatureActions::Stay => {}
+
                 _ => {
                     println!("Unhandled action {:?}", action);
                     next_position = creature.position.clone();
@@ -235,18 +249,20 @@ impl EnvironmentV1 {
             if next_position != creature.position {
                 println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
 
+                let pos = creature.position.clone();
+
                 // Detect collisions in next space
                 match self.positions[next_position.x][next_position.y] {
                     // If next space is blank, perform the move
                     SpaceStates::BlankSpace => {
-                        self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                        self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
                         creature.set_position(next_position.x, next_position.y);
                     }
 
                     // If next space is food, then eat it!
                     SpaceStates::FoodSpace => {
-                        self.positions[creature.position.x][creature.position.y] = SpaceStates::BlankSpace;
+                        self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
                         creature.eat_food(ENERGY_PER_FOOD_PIECE);
                         creature.set_position(next_position.x, next_position.y);
@@ -257,9 +273,11 @@ impl EnvironmentV1 {
                 }
             }
 
+        } // end loop updating creatures
 
-        }
 
+        // Remove dead creatures from the environment
+        self.remove_dead_creatures();
         
         // If proper debug level show the env after each step
         if DEBUG_LEVEL > 1 {
@@ -269,6 +287,31 @@ impl EnvironmentV1 {
         // Increment the time step counter
         self.time_step += 1;
 
+    }
+
+    /// Go through list of creatures and remove the ones that have died from the environment
+    fn remove_dead_creatures(&mut self) {
+        // let mut to_remove : [isize; MAX_NUM_CREATURES] = {-1};
+        // let mut next_rmv_idx = 0; // next index in to_remove to add to
+
+        // Loop through each creature in the environment
+        for creature in &self.creatures {
+            if creature.is_dead() {
+                let pos = creature.position.clone();
+  
+                // Update the position map to remove this creature
+                self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
+
+                // Mark this dude for removal
+                // to_remove[next_rmv_idx] = creature.id;
+            }
+        }
+
+        
+        // for id in to_remove {
+        //     if id != -1 {
+        //     }
+        // }
     }
 
 

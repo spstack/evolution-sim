@@ -13,7 +13,8 @@ use std::fmt::Debug;
 // CONSTANTS
 //===============================================================================
 pub const DEFAULT_ENERGY_LEVEL : usize = 20;
-pub const MAX_POSSIBLE_ENERGY : usize = 100;
+pub const MAX_POSSIBLE_ENERGY : usize = 200;
+pub const MAX_POSSIBLE_AGE : usize = 200;
 
 const DEBUG_LEVEL : usize = 1;
 
@@ -62,6 +63,9 @@ pub struct CreatureV1 {
     /// ID number of this creature
     pub id : usize,
 
+    /// Indicates whether the creature is alive
+    pub is_alive : bool,
+
     /// Current position in 2d coordinates x, y
     pub position : CreaturePosition,
 
@@ -82,6 +86,7 @@ impl CreatureV1 {
         let mut temp_creature = CreatureV1 {
             brain : BrainV1::new(),
             id : id,
+            is_alive : true,
             position : CreaturePosition {x : 0, y : 0},
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
@@ -101,6 +106,7 @@ impl CreatureV1 {
         self.position.y = y;
     }
 
+
     /// Sense surroundings (populate the input neurons)
     pub fn sense_surroundings(&mut self) {
         for (input_neuron_idx, neuron_type) in self.input_neuron_types.iter().enumerate() {
@@ -113,11 +119,6 @@ impl CreatureV1 {
 
     }
 
-    /// Increment the age of the creature by one time step
-    pub fn increment_age(&mut self) {
-        self.age += 1;
-    }
-
     /// Eat a piece of food that gives it the specified amount of energy
     pub fn eat_food(&mut self, food_energy : usize) {
         if self.energy + food_energy > MAX_POSSIBLE_ENERGY {
@@ -127,18 +128,29 @@ impl CreatureV1 {
         }
     }
 
+    /// Returns true if the creature is dead and false if it is alive
+    pub fn is_dead(&self) -> bool {
+        if self.energy > 0  && self.age < MAX_POSSIBLE_AGE {
+            return false
+        } else {
+            return true;
+        }
+    }
+
     // Perform next action (evaluate neural network and decide on next action based on output)
     // Perform any environmental actions like eating nearby food/reproducing/fighting
     pub fn perform_next_action(&mut self) -> CreatureActions {
-        // TODO: Check the surroundings to see whether we need to take any environment specific
-        // actions such as eating adjacent food, reproducing, or dying
-        if self.energy != 0 {
-            self.energy -= 1;
-        } else {
-            println!("Creature {} is ded... :( ", self.id);
-        }
-        self.age += 1;
 
+        if self.is_dead() {
+            // Creature is dead, just return stay action
+            return CreatureActions::Stay;
+        }
+        
+        // Reduce the energy and increase age
+        if self.energy > 0 {
+            self.energy -= 1;
+            self.age += 1;
+        }
 
         // Otherwise, evaluate the brain network based on the current state of the input neurons
         // To check what our next action will be
@@ -151,14 +163,10 @@ impl CreatureV1 {
 
         // Get the value of the action to be taken
         let action = self.brain.get_current_action();
-        if DEBUG_LEVEL > 0 {
-            println!("Next Action is {:?}", action);
-        }
+        
 
         return action; 
     }
-
-
 
 }
 
@@ -220,6 +228,11 @@ impl BrainV1 {
 
         brain.initialize_rand_weights_biases();
         return brain;
+    }
+
+    /// Initialize the brain with the weights and biases from the provided DNA
+    pub fn initialize_with_dna(&mut self, _dna : [isize; DNA_SIZE]) {
+
     }
 
     /// Initialize the weights and biases in the network with random values
@@ -316,7 +329,10 @@ impl BrainV1 {
         }
     }
 
+    /// Get a copy of the DNA array for potential use in creating another 
+    pub fn get_dna_copy(&self) {
 
+    }
 
     /// Evaluate the neural network with the inputs previously provided to `set_input`
     pub fn evaluate_network(&mut self) {
