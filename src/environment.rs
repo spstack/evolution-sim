@@ -16,9 +16,9 @@ pub const ENV_X_SIZE : usize = 25;
 pub const ENV_Y_SIZE : usize = 25;
 // pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
 
-pub const MAX_NUM_CREATURES : usize = 20;
+pub const MAX_NUM_CREATURES : usize = 50;
 
-pub const NUM_START_CREATURES : usize = 10;
+pub const NUM_START_CREATURES : usize = 30;
 pub const NUM_START_FOOD : usize = 10;
 pub const ENERGY_PER_FOOD_PIECE : usize = 20;
 
@@ -45,6 +45,9 @@ pub struct EnvironmentV1 {
 
     // Represents the current time step in the sim
     time_step : usize,  
+
+    // Number of total creatures created
+    num_total_creatures : usize,
 }
 
 
@@ -89,6 +92,7 @@ impl EnvironmentV1 {
             creatures : temp_creature_vec,
             positions : temp_positions,
             time_step : 0,
+            num_total_creatures : NUM_START_CREATURES,
         }
     }
 
@@ -145,6 +149,8 @@ impl EnvironmentV1 {
                 }
             },
 
+
+
             _ => {
                 println!("Unhandled action {:?}", action);
                 next_position = creature.position.clone();
@@ -189,8 +195,13 @@ impl EnvironmentV1 {
             println!("");
         }
 
+        // Create a temporary variable to hold new creatures that will spawn
+        let mut temp_new_creatures : Vec<CreatureV1> = Vec::new();
+
         // Evaluate the next action for each creature
-        for creature in &mut self.creatures {
+        for creature_idx in 0..self.creatures.len() {
+            let creature = &mut self.creatures[creature_idx];
+
             // First update the 'senses' of the creature
             creature.sense_surroundings();
 
@@ -199,7 +210,9 @@ impl EnvironmentV1 {
 
             // if the creature is dead, don't bother handling the next action. Will be removed
             if creature.is_dead() {
-                println!("Creature {} is ded... :( | age = {}", creature.id, creature.age);
+                if DEBUG_LEVEL > 2 {
+                    println!("Creature {} is ded... :( | age = {}", creature.id, creature.age);
+                }
                 continue;
             }
 
@@ -235,6 +248,13 @@ impl EnvironmentV1 {
                     if next_position.x < self.positions[0].len() - 1 {
                         next_position.x += 1;
                     }
+                },
+
+                CreatureActions::Reproduce => {
+                    println!("Creature {} is reproducing!", creature.id);
+                    let mut new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature);
+                    self.num_total_creatures += 1;
+                    temp_new_creatures.push(new_offspring);
                 },
 
                 CreatureActions::Stay => {}
@@ -278,6 +298,12 @@ impl EnvironmentV1 {
 
         // Remove dead creatures from the environment
         self.remove_dead_creatures();
+
+        // Add new spawned creatures
+        for new_creature in temp_new_creatures {
+            self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
+            self.creatures.push(new_creature);
+        }
         
         // If proper debug level show the env after each step
         if DEBUG_LEVEL > 1 {
@@ -291,11 +317,11 @@ impl EnvironmentV1 {
 
     /// Go through list of creatures and remove the ones that have died from the environment
     fn remove_dead_creatures(&mut self) {
-        // let mut to_remove : [isize; MAX_NUM_CREATURES] = {-1};
-        // let mut next_rmv_idx = 0; // next index in to_remove to add to
+        let mut to_remove : Vec<usize> = Vec::new(); // vector if indices to remove
 
         // Loop through each creature in the environment
-        for creature in &self.creatures {
+        for creature_idx in 0..self.creatures.len() {
+            let creature = &self.creatures[creature_idx];
             if creature.is_dead() {
                 let pos = creature.position.clone();
   
@@ -303,15 +329,19 @@ impl EnvironmentV1 {
                 self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
 
                 // Mark this dude for removal
-                // to_remove[next_rmv_idx] = creature.id;
+                to_remove.push(creature.id);
             }
         }
-
         
-        // for id in to_remove {
-        //     if id != -1 {
-        //     }
-        // }
+        // Remove the specified IDs from the list
+        for remove_id in to_remove {
+            for x in 0..self.creatures.len() {
+                if self.creatures[x].id == remove_id {
+                    self.creatures.remove(x);
+                    break;
+                }
+            }
+        }
     }
 
 

@@ -10,6 +10,8 @@ mod creature;
 mod environment;
 use environment::*;
 use std::io;
+use std::{thread, time::Duration};
+
 
 
 
@@ -28,6 +30,7 @@ q = quit
 d = display the current state of the environment
 p <creature_id> = print stats for the given creature id
 n = next step. Run one simulation step
+r = run until no creatures left
 ";
 
 
@@ -61,8 +64,23 @@ fn test_env_v1() {
             "p" => env.print_creature(0), 
             "d" => env.show(),
             "n" => env.advance_step(),
+            "r" => run_full_sim(&mut env),
             "q" => break,
             _ => println!("Invalid input {}", choice_str),
         }
+    }
+}
+
+
+/// Run full simulation until there's no more creatures left
+fn run_full_sim(env : &mut EnvironmentV1) {
+
+    while env.creatures.len() > 0 {
+        // Run a sim step
+        env.advance_step();
+
+        // wait a bit
+        thread::sleep(Duration::from_millis(1000));
+
     }
 }

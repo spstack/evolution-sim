@@ -16,6 +16,8 @@ pub const DEFAULT_ENERGY_LEVEL : usize = 20;
 pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 200;
 
+pub const REPRODUCE_AGE : usize = 21;           // Age at which creature will reproduce
+
 const DEBUG_LEVEL : usize = 1;
 
 
@@ -28,6 +30,7 @@ pub enum CreatureActions {
     MoveLeft,
     MoveRight,
     Stay,
+    Reproduce,
     // Kill, //....soon
 }
 
@@ -100,6 +103,28 @@ impl CreatureV1 {
         return temp_creature;
     }
 
+    /// Constructor to create a new creature from a provided parent (genes copied with optional mutations)
+    pub fn new_offspring(id : usize, parent : &CreatureV1) -> CreatureV1 {
+        let parent_dna = parent.brain.get_dna_copy();
+        println!("Initializing offspring w/ dna {parent_dna:?}");
+
+        let mut temp_creature = CreatureV1 {
+            brain : BrainV1::new_from_dna(&parent_dna),
+            id : id,
+            is_alive : true,
+            position : CreaturePosition {x : parent.position.x, y : parent.position.y},
+            energy : DEFAULT_ENERGY_LEVEL,
+            age : 0,
+            input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
+            output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
+        };
+
+        temp_creature.brain.assign_input_node_types(temp_creature.input_neuron_types);
+        temp_creature.brain.assign_output_node_types(temp_creature.output_neuron_types);
+
+        return temp_creature;
+    }
+
     /// Set position in the board
     pub fn set_position(&mut self, x: usize, y: usize) {
         self.position.x = x;
@@ -145,11 +170,16 @@ impl CreatureV1 {
             // Creature is dead, just return stay action
             return CreatureActions::Stay;
         }
-        
+
         // Reduce the energy and increase age
         if self.energy > 0 {
             self.energy -= 1;
             self.age += 1;
+        }
+
+        // If we get to a certain age, then we've survived long enough! Reproduce
+        if self.age == REPRODUCE_AGE {
+            return CreatureActions::Reproduce;
         }
 
         // Otherwise, evaluate the brain network based on the current state of the input neurons
@@ -185,6 +215,9 @@ pub const VAL_MAX : isize = 1000;
 
 pub const DNA_SIZE : usize = NUM_NODES + MAX_CONNECTIONS_PER_NODE * NUM_NODES;
 
+// Define dna type
+type Dna = [isize; DNA_SIZE];
+
 /// Second attempt at making a more generic neural network for creature brains
 pub struct BrainV1 {
 
@@ -192,7 +225,7 @@ pub struct BrainV1 {
     /// and second dimension index is the destination node number in the previous layer.
     /// For example, the connection between node ID 5 and the second node in the previous layer from id 5
     /// would be: weights[5][1]
-    pub weights : [[isize; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
+    //pub weights : [[isize; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
     pub weights_flat : [isize; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
 
     /// Defines the bias values for each neuron in the network. Index is the neuron ID, and value at that 
@@ -201,7 +234,7 @@ pub struct BrainV1 {
 
     /// "DNA" array that uniquely identifies this brain structure. It's composed of the biases of each neuron
     /// followed by the flattened matrix of weights for each neuron connection in the brain
-    pub dna : [isize; DNA_SIZE],
+    pub dna : Dna,
 
     /// Current value that each neuron (node) is holding
     pub values : [isize; NUM_NODES],
@@ -217,7 +250,7 @@ impl BrainV1 {
     /// Constructor to allocate a new BrainV1 instance
     fn new() -> BrainV1 {
         let mut brain = BrainV1 { 
-            weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
+            // weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
             weights_flat : [0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
             biases : [0; NUM_NODES],
             dna : [0; DNA_SIZE],
@@ -230,9 +263,39 @@ impl BrainV1 {
         return brain;
     }
 
-    /// Initialize the brain with the weights and biases from the provided DNA
-    pub fn initialize_with_dna(&mut self, _dna : [isize; DNA_SIZE]) {
+    /// Constructor that takes in dna type to 
+    fn new_from_dna(dna : &Dna) -> BrainV1 {
+        let mut brain = BrainV1 { 
+            // weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
+            weights_flat : [0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
+            biases : [0; NUM_NODES],
+            dna : [0; DNA_SIZE],
+            values : [0; NUM_NODES],
+            input_node_types : [CreatureInputs::Unused; NUM_INPUT_NODES],
+            output_node_types : [CreatureActions::Stay; NUM_OUTPUT_NODES],
+        };
+        brain.initialize_with_dna(&dna);
+        return brain;
+    }
 
+
+    /// Initialize the brain with the weights and biases from the provided DNA
+    pub fn initialize_with_dna(&mut self, _dna : &Dna) {
+
+        // Copy dna into this struct
+        self.dna = *_dna;
+
+        // First populate biases
+        for i in 0..NUM_NODES {
+            self.biases[i] = _dna[i];
+        }
+
+        // Next populate flat weights array
+        let mut w_idx : usize = 0;
+        for dna_idx in NUM_NODES..DNA_SIZE {
+            self.weights_flat[w_idx] = _dna[dna_idx];
+            w_idx += 1;
+        }
     }
 
     /// Initialize the weights and biases in the network with random values
@@ -251,7 +314,7 @@ impl BrainV1 {
             if curr_layer > 0 {
                 for dst_idx in 0..LAYER_SIZES[curr_layer - 1] {
                     let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-                    self.weights[node_id][dst_idx] = val;
+                    // self.weights[node_id][dst_idx] = val;
                     self.weights_flat[self.weights_idx(node_id, dst_idx)] = val;
                 }
             }
@@ -330,8 +393,10 @@ impl BrainV1 {
     }
 
     /// Get a copy of the DNA array for potential use in creating another 
-    pub fn get_dna_copy(&self) {
-
+    /// dna_out - reference to dna array where 
+    pub fn get_dna_copy(&self) -> Dna {
+        let ret_dna : Dna = self.dna;
+        return ret_dna;
     }
 
     /// Evaluate the neural network with the inputs previously provided to `set_input`
