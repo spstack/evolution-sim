@@ -522,6 +522,19 @@ impl BrainV1 {
 }
 
 
+/// Single network layer
+struct NetLayer {
+    num_nodes : usize,          // Number of nodes in this layer
+    activations : Vec<isize>,   // activation values of each node in this layer
+    weights : Vec<isize>,       // weights matrix. Will be of size <prev
+    biases : Vec<isize>,
+}
+
+
+pub struct BrainV2 {
+}
+
+
 /*pub struct NeuralNetV1 {
 
     pub input_layer_bias : [isize; NUM_INPUT_NODES], // column vector of bias

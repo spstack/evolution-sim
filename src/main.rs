@@ -8,20 +8,38 @@
 
 mod creature;
 mod environment;
+mod env_macroquad;
+mod linalg;
 use environment::*;
+use env_macroquad::*;
+use linalg::*;
 use std::io;
 use std::{thread, time::Duration};
+use macroquad::prelude::*;
 
 
+// Main application entry point for macroquad testing
+// #[macroquad::main("BasicShapes")]
+// async fn main() {
 
+//     loop {
+//         env_macroquad::run_sim();
+//         next_frame().await
+//     }
 
-/// Main application entry point
+//     // env_piston::test_piston_env();
+//     // test_env_v1();
+// }
+
+/// main functions for test math entry
+// fn main() {
+//     test_linalg();
+// }
+
+/// Main function for command line sim visualization
 fn main() {
-
     test_env_v1();
-
 }
-
 
 // Help string for the command line interface
 const HELP_TEXT : &str = "
@@ -80,7 +98,7 @@ fn run_full_sim(env : &mut EnvironmentV1) {
         env.advance_step();
 
         // wait a bit
-        thread::sleep(Duration::from_millis(1000));
+        thread::sleep(Duration::from_millis(500));
 
     }
 }
