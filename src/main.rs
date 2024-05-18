@@ -18,6 +18,7 @@ use std::{thread, time::Duration};
 use macroquad::prelude::*;
 
 
+
 // Main application entry point for macroquad testing
 // #[macroquad::main("BasicShapes")]
 // async fn main() {
@@ -46,7 +47,7 @@ const HELP_TEXT : &str = "
 h = help
 q = quit
 d = display the current state of the environment
-p <creature_id> = print stats for the given creature id
+p = print stats for all creatures that are alive
 n = next step. Run one simulation step
 r = run until no creatures left
 ";
@@ -56,7 +57,12 @@ r = run until no creatures left
 fn test_env_v1() {
 
     // Allocate the env
-    let mut env = EnvironmentV1::new();
+    let mut env = EnvironmentV1::new(40, 40, 20, 20);
+    //     env_x_size = 25,
+    //     env_y_size = 25,
+    //     num_start_creatures = 20,
+    //     num_start_food = 20,
+    // );
 
     // Show initial state
     env.show();
@@ -79,7 +85,7 @@ fn test_env_v1() {
         let choice_str = choice.trim();
         match choice_str {
             "h" => println!("{}", HELP_TEXT),
-            "p" => env.print_creature(0), 
+            "p" => env.show_all_creature_info(), 
             "d" => env.show(),
             "n" => env.advance_step(),
             "r" => run_full_sim(&mut env),

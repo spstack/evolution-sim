@@ -8,6 +8,7 @@
 // Define external crates to use in this module
 use rand::Rng;
 use std::fmt::Debug;
+use crate::linalg::*;
 
 //===============================================================================
 // CONSTANTS
@@ -19,7 +20,6 @@ pub const MAX_POSSIBLE_AGE : usize = 200;
 pub const REPRODUCE_AGE : usize = 21;           // Age at which creature will reproduce
 
 const DEBUG_LEVEL : usize = 1;
-
 
 
 /// Defines the possible actions that a creature of any type can take
@@ -78,6 +78,9 @@ pub struct CreatureV1 {
     /// Current age of the creature in time-steps 
     pub age : usize,
 
+    /// Last action that the creature took
+    pub last_action : CreatureActions,
+
     input_neuron_types : [CreatureInputs; NUM_INPUT_NODES],
     output_neuron_types : [CreatureActions; NUM_OUTPUT_NODES],
 }
@@ -93,6 +96,7 @@ impl CreatureV1 {
             position : CreaturePosition {x : 0, y : 0},
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
+            last_action : CreatureActions::Stay,
             input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
             output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
         };
@@ -115,6 +119,7 @@ impl CreatureV1 {
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
+            last_action : CreatureActions::Stay,
             input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
             output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
         };
@@ -168,6 +173,7 @@ impl CreatureV1 {
 
         if self.is_dead() {
             // Creature is dead, just return stay action
+            self.last_action = CreatureActions::Stay;
             return CreatureActions::Stay;
         }
 
@@ -179,6 +185,7 @@ impl CreatureV1 {
 
         // If we get to a certain age, then we've survived long enough! Reproduce
         if self.age == REPRODUCE_AGE {
+            self.last_action = CreatureActions::Reproduce;
             return CreatureActions::Reproduce;
         }
 
@@ -193,7 +200,7 @@ impl CreatureV1 {
 
         // Get the value of the action to be taken
         let action = self.brain.get_current_action();
-        
+        self.last_action = action;
 
         return action; 
     }
@@ -209,7 +216,7 @@ pub const NUM_OUTPUT_NODES : usize = LAYER_SIZES[NUM_LAYERS-1];
 pub const NUM_NODES : usize = 15; // Total number of nodes in the network. Must be consistent with LAYER_SIZES
 pub const MAX_CONNECTIONS_PER_NODE : usize = 6; // This must be greater than or equal to max layer size
 
-// Define min/max values that input neurons can have and that weights/biases can have
+// Define min/max initial values that input neurons can have and that weights/biases can have
 pub const VAL_MIN : isize = -1000;
 pub const VAL_MAX : isize = 1000;
 
@@ -523,15 +530,31 @@ impl BrainV1 {
 
 
 /// Single network layer
-struct NetLayer {
-    num_nodes : usize,          // Number of nodes in this layer
-    activations : Vec<isize>,   // activation values of each node in this layer
-    weights : Vec<isize>,       // weights matrix. Will be of size <prev
-    biases : Vec<isize>,
-}
+// struct NetLayer {
+//     num_nodes : usize,          // Number of nodes in this layer
+//     activations : Vec<isize>,   // activation values of each node in this layer
+//     weights : Matrix<isize>,    // weights matrix. Will be of size <prev_layer_nodes> by <cur_layer_num_nodes>
+//     biases : Vec<isize>,
+// }
 
+// Network Parameters
+const V2_NUM_LAYERS : usize = 4;            // Layers including input/output
+const V2_NUM_INPUT_NEURONS : usize = 6;
+const V2_NUM_OUTPUT_NEURONS : usize = 6;
 
+/// Define version 2 of creature brain neural network
 pub struct BrainV2 {
+
+    
+    // Number of nodes in each layer
+    num_layers : usize,
+    layer_sizes : [usize; V2_NUM_LAYERS],
+
+    // Define network internals
+    weights : [Matrix<isize>; V2_NUM_LAYERS - 1],   // Array of weights matrices. Each matrix represents the weights between layer at that index and next layer. I.e. output layer has no weights matrix
+    biases  : [Vec<isize>; V2_NUM_LAYERS - 1],      // Biases. Index relates the bias for the NEXT layer's activation. E.g. biases at index zero are applied to determine second layers activation (input layer has no biases)
+    activations : [Vec<isize>; V2_NUM_LAYERS],      // Activations of each layer
+
 }
 
 

@@ -5,6 +5,7 @@
  * Description: Implements graphical 2D environment using `macroquad` graphics lib
  * ===============================================================================*/
 use crate::creature::*;
+use crate::environment::*;
 use macroquad::prelude::*;
 
 
@@ -28,8 +29,8 @@ const GRID_Y_SIZE : f32 = ENV_Y_SIZE / NUM_GRID_SQUARES_Y;
 
 /// Constant parameters for this simulation that are passed into the main function
 struct SimParameters {
-    env_x_size : usize,     // X size of the environment in pixels
-    env_y_size : usize,     // Y Size of the environment in pixels
+    env_x_size : f32,     // X size of the environment in pixels
+    env_y_size : f32,     // Y Size of the environment in pixels
     
 }
 
@@ -41,16 +42,66 @@ pub enum SpaceStates {
     FoodSpace,                  // Space has a food in it
 }
 
-/// Placeholder for piston library environment
+/// Environment
 struct EnvMacroquad {
     params : SimParameters,     // Constant values that sim is initialized with
-
+    env : EnvironmentV1,        // Contains the whole environment
 }
 
 
 //===============================================================================
 // FUNCTIONS
 //===============================================================================
+
+impl EnvMacroquad {
+
+    /// Get a new instance of the Macroquad environment
+    fn new() -> EnvMacroquad {
+        return EnvMacroquad {
+            params : SimParameters {
+                env_x_size : ENV_X_SIZE,
+                env_y_size : ENV_Y_SIZE,
+            },
+            env : EnvironmentV1::new(
+                50, // env_x_size
+                50, // env_y_size
+                20, // num_start_creatures
+                20, // num_start_food
+            ),
+        }
+    }
+
+
+    /// Run and display the next step of the simulation
+    pub fn run_next_step(&mut self) {
+        self.env.advance_step();
+    }
+
+    /// Update the display
+    pub fn update_display(&self) {
+        // println!();
+        // println!("-----------------------------------------------------------------------------");
+        // for y in -1..ENV_Y_SIZE {
+        //     print!("|");
+        //     for x in -1..ENV_X_SIZE {
+        //         match self.positions[x][y] {
+        //             SpaceStates::BlankSpace => print!("   "),
+        //             SpaceStates::CreatureSpace(id) => print!("{:1} ", id),
+        //             SpaceStates::FoodSpace => print!(" # "),
+        //         }
+        //     }
+        //     print!("|");
+        //     println!();
+        // }
+        // println!("-----------------------------------------------------------------------------");
+        // println!("Key:");
+        // println!("Creature = <id num>\nFood = #");
+    }
+}
+
+pub fn start_sim() {
+
+}
 
 pub fn run_sim() {
     clear_background(GRAY);
@@ -69,7 +120,6 @@ pub fn run_sim() {
     draw_single_square(7, 4);
 
     draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
-
 }
 
 

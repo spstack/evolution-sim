@@ -10,17 +10,17 @@ use rand::Rng;
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEBUG_LEVEL : usize = 2;
+pub const DEBUG_LEVEL : usize = 1;
 
-pub const ENV_X_SIZE : usize = 25;
-pub const ENV_Y_SIZE : usize = 25;
+pub const MAX_ENV_X_SIZE : usize = 50;
+pub const MAX_ENV_Y_SIZE : usize = 50;
 // pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
 
 pub const MAX_NUM_CREATURES : usize = 50;
 
-pub const NUM_START_CREATURES : usize = 30;
-pub const NUM_START_FOOD : usize = 10;
-pub const ENERGY_PER_FOOD_PIECE : usize = 20;
+// pub const NUM_START_CREATURES : usize = 30;
+// pub const NUM_START_FOOD : usize = 10;
+pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
 
 //===============================================================================
 // Environment V1 Declarations
@@ -34,14 +34,21 @@ pub enum SpaceStates {
     FoodSpace,                  // Space has a food in it
 }
 
+
 /// Structure representing a very simple 2-D environment
 pub struct EnvironmentV1 {
+    // Parameters
+    env_x_size : usize,
+    env_y_size : usize,
+    num_start_creatures : usize,  
+    num_start_food : usize,
+    energy_per_food_piece : usize,
 
     // Vector containing all creature instances
     pub creatures : Vec<CreatureV1>,
 
     // Contains the states of each space.
-    pub positions : [[SpaceStates; ENV_Y_SIZE]; ENV_X_SIZE],
+    pub positions : [[SpaceStates; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE],
 
     // Represents the current time step in the sim
     time_step : usize,  
@@ -55,28 +62,28 @@ pub struct EnvironmentV1 {
 impl EnvironmentV1 {
 
     /// Constructor for new environment instance
-    pub fn new() -> EnvironmentV1 {
+    pub fn new(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize) -> EnvironmentV1 {
         let mut rng = rand::thread_rng();
 
         // Initialize all positions to be blank at first
-        let mut temp_positions = [[SpaceStates::BlankSpace; ENV_Y_SIZE]; ENV_X_SIZE];
+        let mut temp_positions = [[SpaceStates::BlankSpace; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE];
 
         // Initialize creature vector
         let mut temp_creature_vec = Vec::<CreatureV1>::with_capacity(MAX_NUM_CREATURES);
 
         // Fill in random spaces with food
-        for _food_num in 0..NUM_START_FOOD {
-            let x = rng.gen_range(0..ENV_X_SIZE);
-            let y = rng.gen_range(0..ENV_Y_SIZE);
+        for _food_num in 0..num_start_food {
+            let x = rng.gen_range(0..env_x_size);
+            let y = rng.gen_range(0..env_y_size);
             temp_positions[x][y] = SpaceStates::FoodSpace;
         }
 
         // Fill in random spaces with creatures (no worries if they overwrite food)
-        for creature_num in 0..NUM_START_CREATURES {
+        for creature_num in 0..num_start_creatures {
 
             // Generate the random location of new creature
-            let x = rng.gen_range(0..ENV_X_SIZE);
-            let y = rng.gen_range(0..ENV_Y_SIZE);
+            let x = rng.gen_range(0..env_x_size);
+            let y = rng.gen_range(0..env_y_size);
 
             // Set the space to creature space
             temp_positions[x][y] = SpaceStates::CreatureSpace(creature_num);
@@ -89,10 +96,15 @@ impl EnvironmentV1 {
 
         // Return a new instance of the environment
         return EnvironmentV1 {
+            env_x_size : env_x_size,
+            env_y_size : env_y_size,
+            num_start_creatures : num_start_creatures,  
+            num_start_food : num_start_food,
+            energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
             creatures : temp_creature_vec,
             positions : temp_positions,
             time_step : 0,
-            num_total_creatures : NUM_START_CREATURES,
+            num_total_creatures : num_start_creatures,
         }
     }
 
@@ -100,10 +112,11 @@ impl EnvironmentV1 {
     /// Print the current state of the environment board
     pub fn show(&self) {
         println!();
-        println!("-----------------------------------------------------------------------------");
-        for y in 0..ENV_Y_SIZE {
+        let num_dashes = self.env_x_size * 3 + 1;
+        println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
+        for y in 0..self.env_y_size {
             print!("|");
-            for x in 0..ENV_X_SIZE {
+            for x in 0..self.env_x_size {
                 match self.positions[x][y] {
                     SpaceStates::BlankSpace => print!("   "),
                     SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
@@ -113,10 +126,20 @@ impl EnvironmentV1 {
             print!("|");
             println!();
         }
-        println!("-----------------------------------------------------------------------------");
+        println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
         println!("Key:");
         println!("Creature = <id num>\nFood = #");
     }
+
+    /// Print all creature info in columns to stdout
+    pub fn show_all_creature_info(&self) {
+        println!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
+        for creature_idx in 0..self.creatures.len() {
+            let creature = &self.creatures[creature_idx];
+            println!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
+        }
+    }
+
 
     fn handle_creature_action(&mut self, creature: &mut CreatureV1, action : CreatureActions) {
         let mut next_position : CreaturePosition = creature.position.clone();
@@ -159,7 +182,9 @@ impl EnvironmentV1 {
 
         // If there was an update to the position, check for collisions, food, etc...
         if next_position != creature.position {
-            println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+            if DEBUG_LEVEL > 1 {
+                println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+            }
 
             let pos = creature.position.clone();
 
@@ -174,7 +199,7 @@ impl EnvironmentV1 {
                 SpaceStates::FoodSpace => {
                     self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                     self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
-                    creature.eat_food(ENERGY_PER_FOOD_PIECE);
+                    creature.eat_food(self.energy_per_food_piece);
                 }
 
                 // Otherwise, do nothing...
@@ -216,7 +241,7 @@ impl EnvironmentV1 {
                 continue;
             }
 
-            if DEBUG_LEVEL > 0 {
+            if DEBUG_LEVEL > 1 {
                 println!("Next Action for creature {} is {:?} | age = {} | energy = {}", creature.id, action, creature.age, creature.energy);
             }
 
@@ -267,7 +292,9 @@ impl EnvironmentV1 {
 
             // If there was an update to the position, check for collisions, food, etc...
             if next_position != creature.position {
-                println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+                if DEBUG_LEVEL > 1 {
+                    println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+                }
 
                 let pos = creature.position.clone();
 
@@ -284,7 +311,7 @@ impl EnvironmentV1 {
                     SpaceStates::FoodSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
-                        creature.eat_food(ENERGY_PER_FOOD_PIECE);
+                        creature.eat_food(self.energy_per_food_piece);
                         creature.set_position(next_position.x, next_position.y);
                     }
 
@@ -306,7 +333,7 @@ impl EnvironmentV1 {
         }
         
         // If proper debug level show the env after each step
-        if DEBUG_LEVEL > 1 {
+        if DEBUG_LEVEL > 0 {
             self.show();
         }
 
