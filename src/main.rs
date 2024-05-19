@@ -20,17 +20,28 @@ use macroquad::prelude::*;
 
 
 // Main application entry point for macroquad testing
-// #[macroquad::main("BasicShapes")]
-// async fn main() {
+#[macroquad::main("BasicShapes")]
+async fn main() {
+    let mut env = env_macroquad::EnvMacroquad::new();
+    let mut last_update = get_time();
+    let mut cur_time = get_time();
 
-//     loop {
-//         env_macroquad::run_sim();
-//         next_frame().await
-//     }
+    loop {
+        // Update display every time through
+        env.update_display();
+        cur_time = get_time();
 
-//     // env_piston::test_piston_env();
-//     // test_env_v1();
-// }
+        if cur_time - last_update > 0.2 {
+            env.run_next_step();
+            last_update = get_time();
+        }
+
+        next_frame().await
+    }
+
+    // env_piston::test_piston_env();
+    // test_env_v1();
+}
 
 /// main functions for test math entry
 // fn main() {
@@ -38,9 +49,9 @@ use macroquad::prelude::*;
 // }
 
 /// Main function for command line sim visualization
-fn main() {
-    test_env_v1();
-}
+// fn main() {
+//     test_env_v1();
+// }
 
 // Help string for the command line interface
 const HELP_TEXT : &str = "
@@ -58,11 +69,6 @@ fn test_env_v1() {
 
     // Allocate the env
     let mut env = EnvironmentV1::new(40, 40, 20, 20);
-    //     env_x_size = 25,
-    //     env_y_size = 25,
-    //     num_start_creatures = 20,
-    //     num_start_food = 20,
-    // );
 
     // Show initial state
     env.show();

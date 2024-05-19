@@ -14,14 +14,14 @@ use macroquad::prelude::*;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 1;
 
-const ENV_X_SIZE : f32 = 640.0;
-const ENV_Y_SIZE : f32 = 480.0;
+const SCREEN_SIZE_X : f32 = 640.0;
+const SCREEN_SIZE_Y : f32 = 480.0;
 
-const NUM_GRID_SQUARES_X : f32 = 60.0;
-const NUM_GRID_SQUARES_Y : f32 = 40.0;
+const NUM_GRID_SQUARES_X : usize = 50;
+const NUM_GRID_SQUARES_Y : usize = 50;
 
-const GRID_X_SIZE : f32 = ENV_X_SIZE / NUM_GRID_SQUARES_X;
-const GRID_Y_SIZE : f32 = ENV_Y_SIZE / NUM_GRID_SQUARES_Y;
+// const GRID_X_SIZE : f32 = SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32;
+// const GRID_Y_SIZE : f32 = SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32;
 
 //===============================================================================
 // DATA
@@ -29,21 +29,15 @@ const GRID_Y_SIZE : f32 = ENV_Y_SIZE / NUM_GRID_SQUARES_Y;
 
 /// Constant parameters for this simulation that are passed into the main function
 struct SimParameters {
-    env_x_size : f32,     // X size of the environment in pixels
-    env_y_size : f32,     // Y Size of the environment in pixels
-    
+    screen_width_pixels : f32,      // X Size of the environment in pixels
+    screen_height_pixels : f32,     // Y size of the environment in pixels
+    grid_x_size : f32,              // X size of a single grid square in pixels
+    grid_y_size : f32,              // Y size of a single grid square in pixels
 }
 
-/// Enumeration that defines the possible space states
-#[derive(Copy, Clone)]
-pub enum SpaceStates {
-    BlankSpace,                 // Space is blank
-    CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
-    FoodSpace,                  // Space has a food in it
-}
 
 /// Environment
-struct EnvMacroquad {
+pub struct EnvMacroquad {
     params : SimParameters,     // Constant values that sim is initialized with
     env : EnvironmentV1,        // Contains the whole environment
 }
@@ -56,16 +50,18 @@ struct EnvMacroquad {
 impl EnvMacroquad {
 
     /// Get a new instance of the Macroquad environment
-    fn new() -> EnvMacroquad {
+    pub fn new() -> EnvMacroquad {
         return EnvMacroquad {
             params : SimParameters {
-                env_x_size : ENV_X_SIZE,
-                env_y_size : ENV_Y_SIZE,
+                screen_width_pixels : SCREEN_SIZE_X,
+                screen_height_pixels : SCREEN_SIZE_Y,
+                grid_x_size : SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32,
+                grid_y_size : SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32,
             },
             env : EnvironmentV1::new(
-                50, // env_x_size
-                50, // env_y_size
-                20, // num_start_creatures
+                NUM_GRID_SQUARES_X, // env_x_size
+                NUM_GRID_SQUARES_Y, // env_y_size
+                50, // num_start_creatures
                 20, // num_start_food
             ),
         }
@@ -75,10 +71,28 @@ impl EnvMacroquad {
     /// Run and display the next step of the simulation
     pub fn run_next_step(&mut self) {
         self.env.advance_step();
+        self.env.show_all_creature_info()
     }
 
     /// Update the display
     pub fn update_display(&self) {
+        clear_background(GRAY);
+        // for creature in &self.env.creatures {
+        //     draw_single_square(creature.position.x, creature.position.y);
+        // }
+
+        for x in 0..self.env.env_x_size {
+            for y in 0..self.env.env_y_size {
+                match self.env.positions[x][y] {
+                    SpaceStates::CreatureSpace(id) => self.draw_creature_square(x, y),
+                    SpaceStates::FoodSpace => self.draw_food_space(x, y),
+                    _ => (),
+                }
+            }
+        }
+
+
+    }
         // println!();
         // println!("-----------------------------------------------------------------------------");
         // for y in -1..ENV_Y_SIZE {
@@ -96,7 +110,23 @@ impl EnvMacroquad {
         // println!("-----------------------------------------------------------------------------");
         // println!("Key:");
         // println!("Creature = <id num>\nFood = #");
+
+
+
+    /// Draw a single creature square to the specified location on the screen
+    fn draw_creature_square(&self, x_pos : usize, y_pos : usize) {
+        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLUE);
     }
+    /// Draw a single food space on the screen
+    fn draw_food_space(&self, x_pos : usize, y_pos : usize) {
+        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, GREEN);
+    }
+    /// Draw a wall space on the screen
+    fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
+        // draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, BLACK);
+    }
+
+
 }
 
 pub fn start_sim() {
@@ -109,22 +139,17 @@ pub fn run_sim() {
     // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
     // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
     // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-    draw_single_square(0, 0);
-    draw_single_square(5, 5);
-    draw_single_square(6, 5);
-    draw_single_square(7, 5);
-    draw_single_square(8, 5);
-    draw_single_square(7, 5);
-    draw_single_square(7, 6);
-    draw_single_square(7, 5);
-    draw_single_square(7, 4);
+    // draw_single_square(0, 0);
+    // draw_single_square(5, 5);
+    // draw_single_square(6, 5);
+    // draw_single_square(7, 5);
+    // draw_single_square(8, 5);
+    // draw_single_square(7, 5);
+    // draw_single_square(7, 6);
+    // draw_single_square(7, 5);
+    // draw_single_square(7, 4);
 
     draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
 }
 
-
-/// Draw a single square to the 
-pub fn draw_single_square(x_pos : usize, y_pos : usize) {
-    draw_rectangle((x_pos as f32) * GRID_X_SIZE, (y_pos as f32) * GRID_Y_SIZE, GRID_X_SIZE, GRID_Y_SIZE, BLUE);
-}
 

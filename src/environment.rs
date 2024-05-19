@@ -10,16 +10,12 @@ use rand::Rng;
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEBUG_LEVEL : usize = 1;
+pub const DEBUG_LEVEL : usize = 0;
 
 pub const MAX_ENV_X_SIZE : usize = 50;
 pub const MAX_ENV_Y_SIZE : usize = 50;
-// pub const NUM_TOTAL_SPACES : usize = ENV_X_SIZE * ENV_Y_SIZE;
-
 pub const MAX_NUM_CREATURES : usize = 50;
 
-// pub const NUM_START_CREATURES : usize = 30;
-// pub const NUM_START_FOOD : usize = 10;
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
 
 //===============================================================================
@@ -38,8 +34,8 @@ pub enum SpaceStates {
 /// Structure representing a very simple 2-D environment
 pub struct EnvironmentV1 {
     // Parameters
-    env_x_size : usize,
-    env_y_size : usize,
+    pub env_x_size : usize,
+    pub env_y_size : usize,
     num_start_creatures : usize,  
     num_start_food : usize,
     energy_per_food_piece : usize,
