@@ -20,7 +20,7 @@ use macroquad::prelude::*;
 
 
 // Main application entry point for macroquad testing
-#[macroquad::main("BasicShapes")]
+#[macroquad::main("Evolution Sim!")]
 async fn main() {
     let mut env = env_macroquad::EnvMacroquad::new();
     let mut last_update = get_time();

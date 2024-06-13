@@ -108,12 +108,14 @@ impl CreatureV1 {
     }
 
     /// Constructor to create a new creature from a provided parent (genes copied with optional mutations)
-    pub fn new_offspring(id : usize, parent : &CreatureV1) -> CreatureV1 {
+    pub fn new_offspring(id : usize, parent : &CreatureV1, mutation_prob : f32) -> CreatureV1 {
         let parent_dna = parent.brain.get_dna_copy();
-        println!("Initializing offspring w/ dna {parent_dna:?}");
+        if DEBUG_LEVEL > 1 {
+            println!("Initializing offspring w/ dna {parent_dna:?}");
+        }
 
         let mut temp_creature = CreatureV1 {
-            brain : BrainV1::new_from_dna(&parent_dna),
+            brain : BrainV1::new_from_dna(&parent_dna, mutation_prob),
             id : id,
             is_alive : true,
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
@@ -271,7 +273,8 @@ impl BrainV1 {
     }
 
     /// Constructor that takes in dna type to 
-    fn new_from_dna(dna : &Dna) -> BrainV1 {
+    fn new_from_dna(dna : &Dna, mutation_prob : f32) -> BrainV1 {
+        // Create new temp brain
         let mut brain = BrainV1 { 
             // weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
             weights_flat : [0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
@@ -282,6 +285,10 @@ impl BrainV1 {
             output_node_types : [CreatureActions::Stay; NUM_OUTPUT_NODES],
         };
         brain.initialize_with_dna(&dna);
+
+        // apply mutations to new DNA
+        brain.apply_random_dna_mutation(mutation_prob);
+
         return brain;
     }
 
@@ -302,6 +309,18 @@ impl BrainV1 {
         for dna_idx in NUM_NODES..DNA_SIZE {
             self.weights_flat[w_idx] = _dna[dna_idx];
             w_idx += 1;
+        }
+    }
+
+    /// Apply random mutations to this brains "DNA" where probablility of a single
+    /// value being changed to a random number is given by `mutation_prob` [0, 1]
+    fn apply_random_dna_mutation(&mut self, mutation_prob : f32) {
+        let mut rng = rand::thread_rng();
+        for idx in 0..self.dna.len() {
+            // gen() generates a floating point between 0 and 1 if less than the mutation prob, generate a new value
+            if rng.gen::<f32>() <= mutation_prob {
+                self.dna[idx] = rng.gen_range(VAL_MIN..=VAL_MAX);
+            }
         }
     }
 
