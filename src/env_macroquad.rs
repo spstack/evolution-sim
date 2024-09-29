@@ -38,8 +38,8 @@ struct SimParameters {
 
 /// Environment
 pub struct EnvMacroquad {
-    params : SimParameters,     // Constant values that sim is initialized with
-    env : EnvironmentV1,        // Contains the whole environment
+    pub params : SimParameters,     // Constant values that sim is initialized with
+    pub env : EnvironmentV1,        // Contains the whole environment
 }
 
 
@@ -66,7 +66,6 @@ impl EnvMacroquad {
             ),
         }
     }
-
 
     /// Run and display the next step of the simulation
     pub fn run_next_step(&mut self) {

@@ -10,6 +10,9 @@ use rand::Rng;
 use std::fmt::Debug;
 use crate::linalg::*;
 
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, Result};
+
 //===============================================================================
 // CONSTANTS
 //===============================================================================
@@ -46,6 +49,7 @@ pub enum CreatureInputs {
     VisionRight,
 }
 
+// #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
 #[derive(Copy, Clone, PartialEq)]
 pub struct CreaturePosition {
     pub x : usize, // x position of the creature
@@ -58,6 +62,7 @@ use CreatureActions::*;
 use CreatureInputs::*;
 
 /// Version 1 of a simple creature. It's only available actions are to move and eat
+// #[derive(Serialize, Deserialize)]
 pub struct CreatureV1 {
 
     /// Creatures brain represented as a neural network
@@ -81,8 +86,8 @@ pub struct CreatureV1 {
     /// Last action that the creature took
     pub last_action : CreatureActions,
 
-    input_neuron_types : [CreatureInputs; NUM_INPUT_NODES],
-    output_neuron_types : [CreatureActions; NUM_OUTPUT_NODES],
+    input_neuron_types : Vec<CreatureInputs>,
+    output_neuron_types : Vec<CreatureActions>,
 }
 
 impl CreatureV1 {
@@ -97,12 +102,12 @@ impl CreatureV1 {
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
             last_action : CreatureActions::Stay,
-            input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
-            output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
+            input_neuron_types : vec![Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
+            output_neuron_types : vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
         };
 
-        temp_creature.brain.assign_input_node_types(temp_creature.input_neuron_types);
-        temp_creature.brain.assign_output_node_types(temp_creature.output_neuron_types);
+        temp_creature.brain.assign_input_node_types(&temp_creature.input_neuron_types);
+        temp_creature.brain.assign_output_node_types(&temp_creature.output_neuron_types);
 
         return temp_creature;
     }
@@ -122,12 +127,12 @@ impl CreatureV1 {
             energy : DEFAULT_ENERGY_LEVEL,
             age : 0,
             last_action : CreatureActions::Stay,
-            input_neuron_types : [Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
-            output_neuron_types : [Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
+            input_neuron_types : vec![Age, Energy, VisionUp, VisionDown, VisionLeft, VisionRight],
+            output_neuron_types : vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight],
         };
 
-        temp_creature.brain.assign_input_node_types(temp_creature.input_neuron_types);
-        temp_creature.brain.assign_output_node_types(temp_creature.output_neuron_types);
+        temp_creature.brain.assign_input_node_types(&temp_creature.input_neuron_types);
+        temp_creature.brain.assign_output_node_types(&temp_creature.output_neuron_types);
 
         return temp_creature;
     }
@@ -207,6 +212,13 @@ impl CreatureV1 {
         return action; 
     }
 
+    // Return a JSON string that represents this creature. Allows saving state to
+    // a file for use later
+    // pub fn to_json(&self) -> String {
+    //     let json_string = serde_json::to_string(&self);
+    //     return json_string.expect("Error converting creature to JSON");
+    // }
+
 }
 
 
@@ -225,32 +237,29 @@ pub const VAL_MAX : isize = 1000;
 pub const DNA_SIZE : usize = NUM_NODES + MAX_CONNECTIONS_PER_NODE * NUM_NODES;
 
 // Define dna type
-type Dna = [isize; DNA_SIZE];
+type Dna = Vec<isize>; //[isize; DNA_SIZE];
 
 /// Second attempt at making a more generic neural network for creature brains
+// #[derive(Serialize, Deserialize)]
 pub struct BrainV1 {
-
-    /// 2D array representing all weights in the network. First index is the id of starting neuron
-    /// and second dimension index is the destination node number in the previous layer.
-    /// For example, the connection between node ID 5 and the second node in the previous layer from id 5
-    /// would be: weights[5][1]
-    //pub weights : [[isize; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
-    pub weights_flat : [isize; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
+    /// flat array representing all of the weights in the network. The weight between node X and node Y
+    /// would be 
+    pub weights_flat : Vec<isize>,
 
     /// Defines the bias values for each neuron in the network. Index is the neuron ID, and value at that 
     /// index is the bias
-    pub biases : [isize; NUM_NODES],
+    pub biases : Vec<isize>,
 
     /// "DNA" array that uniquely identifies this brain structure. It's composed of the biases of each neuron
     /// followed by the flattened matrix of weights for each neuron connection in the brain
     pub dna : Dna,
 
     /// Current value that each neuron (node) is holding
-    pub values : [isize; NUM_NODES],
+    pub values : Vec<isize>,
 
     // Defines the types of the input nodes
-    pub input_node_types : [CreatureInputs; NUM_INPUT_NODES],
-    pub output_node_types : [CreatureActions; NUM_OUTPUT_NODES],
+    pub input_node_types : Vec<CreatureInputs>,
+    pub output_node_types : Vec<CreatureActions>,
 }
 
 
@@ -259,13 +268,12 @@ impl BrainV1 {
     /// Constructor to allocate a new BrainV1 instance
     fn new() -> BrainV1 {
         let mut brain = BrainV1 { 
-            // weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
-            weights_flat : [0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
-            biases : [0; NUM_NODES],
-            dna : [0; DNA_SIZE],
-            values : [0; NUM_NODES],
-            input_node_types : [CreatureInputs::Unused; NUM_INPUT_NODES],
-            output_node_types : [CreatureActions::Stay; NUM_OUTPUT_NODES],
+            weights_flat : vec![0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
+            biases : vec![0; NUM_NODES],
+            dna : vec![0; DNA_SIZE],
+            values : vec![0; NUM_NODES],
+            input_node_types : vec![CreatureInputs::Unused; NUM_INPUT_NODES],
+            output_node_types : vec![CreatureActions::Stay; NUM_OUTPUT_NODES],
         };
 
         brain.initialize_rand_weights_biases();
@@ -277,12 +285,12 @@ impl BrainV1 {
         // Create new temp brain
         let mut brain = BrainV1 { 
             // weights : [[0; MAX_CONNECTIONS_PER_NODE]; NUM_NODES],
-            weights_flat : [0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
-            biases : [0; NUM_NODES],
-            dna : [0; DNA_SIZE],
-            values : [0; NUM_NODES],
-            input_node_types : [CreatureInputs::Unused; NUM_INPUT_NODES],
-            output_node_types : [CreatureActions::Stay; NUM_OUTPUT_NODES],
+            weights_flat : vec![0; MAX_CONNECTIONS_PER_NODE * NUM_NODES],
+            biases : vec![0; NUM_NODES],
+            dna : vec![0; DNA_SIZE],
+            values : vec![0; NUM_NODES],
+            input_node_types : vec![CreatureInputs::Unused; NUM_INPUT_NODES],
+            output_node_types : vec![CreatureActions::Stay; NUM_OUTPUT_NODES],
         };
         brain.initialize_with_dna(&dna);
 
@@ -297,7 +305,7 @@ impl BrainV1 {
     pub fn initialize_with_dna(&mut self, _dna : &Dna) {
 
         // Copy dna into this struct
-        self.dna = *_dna;
+        self.dna = _dna.clone();
 
         // First populate biases
         for i in 0..NUM_NODES {
@@ -312,7 +320,7 @@ impl BrainV1 {
         }
     }
 
-    /// Apply random mutations to this brains "DNA" where probablility of a single
+    /// Apply random mutations to this brains "DNA" where probability of a single
     /// value being changed to a random number is given by `mutation_prob` [0, 1]
     fn apply_random_dna_mutation(&mut self, mutation_prob : f32) {
         let mut rng = rand::thread_rng();
@@ -340,8 +348,8 @@ impl BrainV1 {
             if curr_layer > 0 {
                 for dst_idx in 0..LAYER_SIZES[curr_layer - 1] {
                     let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-                    // self.weights[node_id][dst_idx] = val;
-                    self.weights_flat[self.weights_idx(node_id, dst_idx)] = val;
+                    let idx = self.weights_idx(node_id, dst_idx);
+                    self.weights_flat[idx] = val;
                 }
             }
 
@@ -355,13 +363,13 @@ impl BrainV1 {
 
     /// Assign each input node to a type of sensory input. Each index in the array represents the input type
     /// that the corresponding input node takes
-    fn assign_input_node_types(&mut self, input_node_types : [CreatureInputs; NUM_INPUT_NODES]) {
-        self.input_node_types = input_node_types;
+    fn assign_input_node_types(&mut self, input_node_types : &Vec<CreatureInputs>) {
+        self.input_node_types = input_node_types.clone();
     }
 
     /// Assign each output node an action to take if that node is activated
-    fn assign_output_node_types(&mut self, output_node_types : [CreatureActions; NUM_OUTPUT_NODES]) {
-        self.output_node_types = output_node_types;
+    fn assign_output_node_types(&mut self, output_node_types : &Vec<CreatureActions>) {
+        self.output_node_types = output_node_types.clone();
     }
 
 
@@ -421,7 +429,7 @@ impl BrainV1 {
     /// Get a copy of the DNA array for potential use in creating another 
     /// dna_out - reference to dna array where 
     pub fn get_dna_copy(&self) -> Dna {
-        let ret_dna : Dna = self.dna;
+        let ret_dna : Dna = self.dna.clone();
         return ret_dna;
     }
 
@@ -443,7 +451,6 @@ impl BrainV1 {
             for row in curr_layer_start_node..next_layer_start_node {
                 self.values[row] = 0; // Clear value stored in this neuron
                 for col in 0..num_nodes_prev_layer { 
-                    // self.values[row] += self.weights[row][col] * self.values[prev_layer_start_node + col];
                     self.values[row] += self.weights_flat[self.weights_idx(row, col)] * self.values[prev_layer_start_node + col];
                     // println!("values[{}] = {} | weights[{}] = {}", row, self.values[row], self.weights_idx(row,col), self.weights_flat[self.weights_idx(row, col)]);
                 }
@@ -547,190 +554,4 @@ impl BrainV1 {
     }
 }
 
-
-/// Single network layer
-// struct NetLayer {
-//     num_nodes : usize,          // Number of nodes in this layer
-//     activations : Vec<isize>,   // activation values of each node in this layer
-//     weights : Matrix<isize>,    // weights matrix. Will be of size <prev_layer_nodes> by <cur_layer_num_nodes>
-//     biases : Vec<isize>,
-// }
-
-// Network Parameters
-const V2_NUM_LAYERS : usize = 4;            // Layers including input/output
-const V2_NUM_INPUT_NEURONS : usize = 6;
-const V2_NUM_OUTPUT_NEURONS : usize = 6;
-
-/// Define version 2 of creature brain neural network
-pub struct BrainV2 {
-
-    
-    // Number of nodes in each layer
-    num_layers : usize,
-    layer_sizes : [usize; V2_NUM_LAYERS],
-
-    // Define network internals
-    weights : [Matrix<isize>; V2_NUM_LAYERS - 1],   // Array of weights matrices. Each matrix represents the weights between layer at that index and next layer. I.e. output layer has no weights matrix
-    biases  : [Vec<isize>; V2_NUM_LAYERS - 1],      // Biases. Index relates the bias for the NEXT layer's activation. E.g. biases at index zero are applied to determine second layers activation (input layer has no biases)
-    activations : [Vec<isize>; V2_NUM_LAYERS],      // Activations of each layer
-
-}
-
-
-/*pub struct NeuralNetV1 {
-
-    pub input_layer_bias : [isize; NUM_INPUT_NODES], // column vector of bias
-    pub input_layer_vals : [isize; NUM_INPUT_NODES], // column vector of current values each input layer neuron holds
-
-    pub hidden_layer1_bias : [isize; NUM_HIDDEN1_NODES],
-    pub hidden_layer1_vals : [isize; NUM_HIDDEN1_NODES],
-    pub hidden_layer1_weights : [[isize; NUM_HIDDEN1_NODES]; NUM_INPUT_NODES], // weights are a 2D array where [x][y] is the weight for connection between node x in first layer and node y in the second
-
-    pub output_layer_bias : [isize; NUM_OUTPUT_NODES],
-    pub output_layer_vals : [isize; NUM_OUTPUT_NODES],
-    pub output_layer_weights : [[isize; NUM_OUTPUT_NODES]; NUM_HIDDEN1_NODES], // weights are a 2D array where [x][y] is the weight for connection between node x in first layer and node y in the second
-    
-}
-
-/// Implement the neural network part of the brain
-impl NeuralNetV1 {
-
-    pub fn initialize_rand(&mut self) {
-        let mut rng = rand::thread_rng();
-
-        // First initialize input bias
-        for idx in 0..NUM_INPUT_NODES {
-            let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-            self.input_layer_bias[idx] = val;
-        }
-
-        // input -> hidden1 weights
-        for row in 0..NUM_INPUT_NODES {
-            for col in 0..NUM_HIDDEN1_NODES {
-                let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-                self.hidden_layer1_weights[row][col] = val;
-            }
-        }
-
-        // hidden1 bias
-        for idx in 0..NUM_HIDDEN1_NODES {
-            let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-            self.hidden_layer1_bias[idx] = val;
-        }
-
-        // hidden1 -> output weights
-        for row in 0..NUM_HIDDEN1_NODES {
-            for col in 0..NUM_OUTPUT_NODES {
-                let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-                self.output_layer_weights[row][col] = val;
-            }
-        }
-
-        // output bias
-        for idx in 0..NUM_OUTPUT_NODES {
-            let val : isize = rng.gen_range(VAL_MIN..VAL_MAX+1);
-            self.output_layer_bias[idx] = val;
-        }
-    }
-
-    fn set_input(&mut self, index : usize, val : isize) {
-        self.input_layer_vals[index] = val;
-    }
-
-    fn evaluate_network(&self) {
-
-    }
-
-    pub fn show(&self) {
-
-        println!("INPUT BIAS");
-        for idx in 0..NUM_INPUT_NODES {
-            println!(" {:6}", self.input_layer_bias[idx]);
-        }
-        println!();
-
-        println!("INPUT -> HIDDEN1 WEIGHTS");
-        for row in 0..NUM_INPUT_NODES {
-            for col in 0..NUM_HIDDEN1_NODES {
-                print!(" {:6}", self.hidden_layer1_weights[row][col]);
-            }
-            println!();
-        }
-        println!();
-
-        println!("HIDDEN1 BIAS");
-        for idx in 0..NUM_HIDDEN1_NODES {
-            println!(" {:6}", self.hidden_layer1_bias[idx]);
-        }
-        println!();
-
-        println!("HIDDEN1 -> OUTPUT WEIGHTS");
-        for row in 0..NUM_HIDDEN1_NODES {
-            for col in 0..NUM_OUTPUT_NODES {
-                print!(" {:6}", self.output_layer_weights[row][col]);
-            }
-            println!();
-        }
-        println!();
-
-        println!("OUTPUT BIAS");
-        for idx in 0..NUM_OUTPUT_NODES {
-            println!(" {:6}", self.output_layer_bias[idx]);
-        }
-        println!();
-    }
-}
-*/
-
-
-/*
-/// Defines a single neuron
-struct Neuron {
-    id : u32;
-    neuron_type : NeuronType;
-    num_inputs : u32;
-    num_outputs : u32;
-    layer : u32;
-    // inputs : [&NeuronConnection; MAX_CONNECTIONS_PER_NODE];
-    value : i32;
-    bias : i32;
-}
-
-/// Implementation of neuron
-impl Neuron {
-
-}
-
-
-struct NeuronConnection {
-    src_neuron : &Neuron;
-    dst_neuron : &Neuron;
-    weight : i32;
-}
-
-/// Defines types of neurons
-enum NeuronType {
-    Input(InputNeuronType),
-    Middle, 
-    Action(ActionNeuronType),
-}
-
-/// Defines types of output neurons (ones that result in things happening)
-enum ActionNeuronType {
-    MoveX(i32),
-    MoveY(i32),
-    Kill,
-    Die,
-}
-
-/// Defines types on input neurons
-enum InputNeuronType {
-    SightFood,
-    SightPredator,
-    Hunger,
-    Age,
-    NumOffspring,
-}
-*/
-    
 

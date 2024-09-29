@@ -12,7 +12,6 @@ mod env_macroquad;
 mod linalg;
 use environment::*;
 use env_macroquad::*;
-use linalg::*;
 use std::io;
 use std::{thread, time::Duration};
 use macroquad::prelude::*;
@@ -39,8 +38,9 @@ async fn main() {
         next_frame().await
     }
 
-    // env_piston::test_piston_env();
-    // test_env_v1();
+
+    // TODO: remove
+    // print!("{}", env.env.creatures[0].to_json());
 }
 
 /// main functions for test math entry
