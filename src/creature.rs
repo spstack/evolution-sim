@@ -26,7 +26,7 @@ const DEBUG_LEVEL : usize = 1;
 
 
 /// Defines the possible actions that a creature of any type can take
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum CreatureActions {
     MoveUp,
     MoveDown,
@@ -38,7 +38,7 @@ pub enum CreatureActions {
 }
 
 /// Defines all possible input neurons to a creature
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Deserialize, Serialize)]
 pub enum CreatureInputs {
     Unused,
     Age,
@@ -49,8 +49,7 @@ pub enum CreatureInputs {
     VisionRight,
 }
 
-// #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub struct CreaturePosition {
     pub x : usize, // x position of the creature
     pub y : usize, // y position of the creature
@@ -62,7 +61,7 @@ use CreatureActions::*;
 use CreatureInputs::*;
 
 /// Version 1 of a simple creature. It's only available actions are to move and eat
-// #[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct CreatureV1 {
 
     /// Creatures brain represented as a neural network
@@ -136,6 +135,20 @@ impl CreatureV1 {
 
         return temp_creature;
     }
+
+
+    /// Constructor to create a new creature from a JSON string
+    pub fn new_from_json(id : usize, json_in : &str) -> Result<CreatureV1> {
+        // This is pretty neat we can basically just tell serde_json to copy all
+        // fields into a given structure.
+        let mut temp_creature : CreatureV1 = serde_json::from_str(json_in)?;
+
+        // Set the ID to the new value
+        temp_creature.id = id;
+
+        return Ok(temp_creature);
+    }
+
 
     /// Set position in the board
     pub fn set_position(&mut self, x: usize, y: usize) {
@@ -212,13 +225,12 @@ impl CreatureV1 {
         return action; 
     }
 
-    // Return a JSON string that represents this creature. Allows saving state to
-    // a file for use later
-    // pub fn to_json(&self) -> String {
-    //     let json_string = serde_json::to_string(&self);
-    //     return json_string.expect("Error converting creature to JSON");
-    // }
-
+    /// Return a JSON string that represents this creature. Allows saving state to
+    /// a file for use later
+    pub fn to_json(&self) -> String {
+        let json_string = serde_json::to_string(&self);
+        return json_string.expect("Error converting creature to JSON");
+    }
 }
 
 
@@ -237,10 +249,10 @@ pub const VAL_MAX : isize = 1000;
 pub const DNA_SIZE : usize = NUM_NODES + MAX_CONNECTIONS_PER_NODE * NUM_NODES;
 
 // Define dna type
-type Dna = Vec<isize>; //[isize; DNA_SIZE];
+type Dna = Vec<isize>;
 
 /// Second attempt at making a more generic neural network for creature brains
-// #[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct BrainV1 {
     /// flat array representing all of the weights in the network. The weight between node X and node Y
     /// would be 
@@ -523,15 +535,6 @@ impl BrainV1 {
 
     /// Print out the weights and biases
     pub fn show(&self) {
-        // Print the weights
-        // println!("WEIGHTS");
-        // for node in 0..NUM_NODES {
-        //     for dst_idx in 0..MAX_CONNECTIONS_PER_NODE {
-        //         print!(" {:6}", self.weights[node][dst_idx]);
-        //     }
-        //     println!();
-        // }
-
         println!("\nWEIGHTS FLAT");
         for node in 0..NUM_NODES {
             for dst_idx in 0..MAX_CONNECTIONS_PER_NODE {

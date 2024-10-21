@@ -12,16 +12,13 @@ use macroquad::prelude::*;
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEBUG_LEVEL : usize = 1;
+pub const DEBUG_LEVEL : usize = 0;
 
-const SCREEN_SIZE_X : f32 = 640.0;
-const SCREEN_SIZE_Y : f32 = 480.0;
+const SCREEN_SIZE_X : f32 = 1200.0;
+const SCREEN_SIZE_Y : f32 = 800.0;
 
-const NUM_GRID_SQUARES_X : usize = 50;
-const NUM_GRID_SQUARES_Y : usize = 50;
-
-// const GRID_X_SIZE : f32 = SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32;
-// const GRID_Y_SIZE : f32 = SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32;
+const NUM_GRID_SQUARES_X : usize = 100;
+const NUM_GRID_SQUARES_Y : usize = 100;
 
 //===============================================================================
 // DATA
@@ -61,8 +58,8 @@ impl EnvMacroquad {
             env : EnvironmentV1::new(
                 NUM_GRID_SQUARES_X, // env_x_size
                 NUM_GRID_SQUARES_Y, // env_y_size
-                50, // num_start_creatures
-                20, // num_start_food
+                100, // num_start_creatures
+                100, // num_start_food
             ),
         }
     }
@@ -70,15 +67,16 @@ impl EnvMacroquad {
     /// Run and display the next step of the simulation
     pub fn run_next_step(&mut self) {
         self.env.advance_step();
-        self.env.show_all_creature_info()
+
+        // Print out status of creatures per step
+        if DEBUG_LEVEL > 0 {
+            self.env.show_all_creature_info()
+        }
     }
 
     /// Update the display
     pub fn update_display(&self) {
         clear_background(GRAY);
-        // for creature in &self.env.creatures {
-        //     draw_single_square(creature.position.x, creature.position.y);
-        // }
 
         for x in 0..self.env.env_x_size {
             for y in 0..self.env.env_y_size {
@@ -92,25 +90,6 @@ impl EnvMacroquad {
 
 
     }
-        // println!();
-        // println!("-----------------------------------------------------------------------------");
-        // for y in -1..ENV_Y_SIZE {
-        //     print!("|");
-        //     for x in -1..ENV_X_SIZE {
-        //         match self.positions[x][y] {
-        //             SpaceStates::BlankSpace => print!("   "),
-        //             SpaceStates::CreatureSpace(id) => print!("{:1} ", id),
-        //             SpaceStates::FoodSpace => print!(" # "),
-        //         }
-        //     }
-        //     print!("|");
-        //     println!();
-        // }
-        // println!("-----------------------------------------------------------------------------");
-        // println!("Key:");
-        // println!("Creature = <id num>\nFood = #");
-
-
 
     /// Draw a single creature square to the specified location on the screen
     fn draw_creature_square(&self, x_pos : usize, y_pos : usize) {
@@ -128,10 +107,8 @@ impl EnvMacroquad {
 
 }
 
-pub fn start_sim() {
 
-}
-
+/// Test function to draw various shapes
 pub fn run_sim() {
     clear_background(GRAY);
 

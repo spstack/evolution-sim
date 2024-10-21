@@ -12,8 +12,8 @@ use rand::Rng;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
-pub const MAX_ENV_X_SIZE : usize = 50;
-pub const MAX_ENV_Y_SIZE : usize = 50;
+pub const MAX_ENV_X_SIZE : usize = 100;
+pub const MAX_ENV_Y_SIZE : usize = 100;
 pub const MAX_NUM_CREATURES : usize = 50;
 
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
@@ -46,7 +46,7 @@ pub struct EnvironmentV1 {
 
     // Current state
     pub creatures : Vec<CreatureV1>,// Vector containing all creature instances
-    pub positions : [[SpaceStates; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE], // Contains the states of each space.
+    pub positions : Vec<Vec<SpaceStates>>, //[[SpaceStates; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE], // Contains the states of each space.
     time_step : usize,              // Represents the current time step in the sim
     num_total_creatures : usize,    // Number of total creatures created throughout sim
 }
@@ -64,7 +64,7 @@ impl EnvironmentV1 {
         }
 
         // Initialize all positions to be blank at first
-        let mut temp_positions = [[SpaceStates::BlankSpace; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE];
+        let mut temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
 
         // Initialize creature vector
         let mut temp_creature_vec = Vec::<CreatureV1>::with_capacity(MAX_NUM_CREATURES);

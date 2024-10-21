@@ -17,30 +17,26 @@ use std::{thread, time::Duration};
 use macroquad::prelude::*;
 
 
-
 // Main application entry point for macroquad testing
 #[macroquad::main("Evolution Sim!")]
 async fn main() {
     let mut env = env_macroquad::EnvMacroquad::new();
     let mut last_update = get_time();
     let mut cur_time = get_time();
+    const MACROQUAD_FRAME_TIME_S : f64 = 0.5;    // Time between sim steps for macroquad in seconds
 
     loop {
         // Update display every time through
         env.update_display();
         cur_time = get_time();
 
-        if cur_time - last_update > 0.2 {
+        if cur_time - last_update > MACROQUAD_FRAME_TIME_S {
             env.run_next_step();
             last_update = get_time();
         }
 
         next_frame().await
     }
-
-
-    // TODO: remove
-    // print!("{}", env.env.creatures[0].to_json());
 }
 
 /// main functions for test math entry
