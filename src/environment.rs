@@ -213,9 +213,9 @@ impl EnvironmentV1 {
                 CreatureActions::Reproduce => {
                     // Randomly determine how many offspring this creature will have
                     let num_offspring = rng.gen_range(1..=self.max_offspring_per_reproduce);
-                    // if DEBUG_LEVEL > 1 {
-                    println!("Creature {} is reproducing with {} offspring!", creature.id, num_offspring);
-                    // }
+                    if DEBUG_LEVEL > 1 {
+                        println!("Creature {} is reproducing with {} offspring!", creature.id, num_offspring);
+                    }
                     for offspring_num in 0..num_offspring {
                         let mut new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.mutation_prob);
                         self.num_total_creatures += 1;

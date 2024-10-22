@@ -14,11 +14,13 @@ use macroquad::prelude::*;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
-const SCREEN_SIZE_X : f32 = 1200.0;
+const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
 
 const NUM_GRID_SQUARES_X : usize = 100;
 const NUM_GRID_SQUARES_Y : usize = 100;
+
+const STATS_PANEL_WIDTH : f32 = 400.0;
 
 //===============================================================================
 // DATA
@@ -26,8 +28,6 @@ const NUM_GRID_SQUARES_Y : usize = 100;
 
 /// Constant parameters for this simulation that are passed into the main function
 struct SimParameters {
-    screen_width_pixels : f32,      // X Size of the environment in pixels
-    screen_height_pixels : f32,     // Y size of the environment in pixels
     grid_x_size : f32,              // X size of a single grid square in pixels
     grid_y_size : f32,              // Y size of a single grid square in pixels
 }
@@ -37,6 +37,13 @@ struct SimParameters {
 pub struct EnvMacroquad {
     pub params : SimParameters,     // Constant values that sim is initialized with
     pub env : EnvironmentV1,        // Contains the whole environment
+
+    stats_panel_x_pos : f32,
+    stats_panel_y_pos : f32,
+
+    screen_width_pixels : f32,      // X Size of the environment in pixels
+    screen_height_pixels : f32,     // Y size of the environment in pixels
+
 }
 
 
@@ -48,10 +55,13 @@ impl EnvMacroquad {
 
     /// Get a new instance of the Macroquad environment
     pub fn new() -> EnvMacroquad {
+        let temp_screen_size_x : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH;
+
+        // First set the screen size to default. Include the size of the stats panel
+        request_new_screen_size(temp_screen_size_x, SCREEN_SIZE_Y);
+
         return EnvMacroquad {
             params : SimParameters {
-                screen_width_pixels : SCREEN_SIZE_X,
-                screen_height_pixels : SCREEN_SIZE_Y,
                 grid_x_size : SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32,
                 grid_y_size : SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32,
             },
@@ -61,6 +71,14 @@ impl EnvMacroquad {
                 100, // num_start_creatures
                 100, // num_start_food
             ),
+
+            // Set position of stats panel
+            stats_panel_x_pos : SCREEN_SIZE_X + 10.0,
+            stats_panel_y_pos : 0.0,
+
+            // Set total size of the window for internal tracking
+            screen_width_pixels : temp_screen_size_x,
+            screen_height_pixels : SCREEN_SIZE_Y,
         }
     }
 
@@ -74,10 +92,10 @@ impl EnvMacroquad {
         }
     }
 
-    /// Update the display
-    pub fn update_display(&self) {
-        clear_background(GRAY);
+    /// Update the simulation env board
+    fn update_sim_display(&self) {
 
+        // For each simulation space on the board, update with proper piece
         for x in 0..self.env.env_x_size {
             for y in 0..self.env.env_y_size {
                 match self.env.positions[x][y] {
@@ -87,7 +105,37 @@ impl EnvMacroquad {
                 }
             }
         }
+    }
 
+    /// Update the statistics panel
+    fn update_stats_panel(&self) {
+        const header_font_size_px : f32 = 14.0;
+        const main_font_size_px : f32 = 10.0;
+        let mut cur_y_pos_px = self.stats_panel_y_pos + header_font_size_px;
+
+        // Write the header
+        let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
+        draw_text(&header_str, self.stats_panel_x_pos, cur_y_pos_px, header_font_size_px, BLACK);
+        cur_y_pos_px += header_font_size_px;
+
+        for creature_idx in 0..self.env.creatures.len() {
+            let creature = &self.env.creatures[creature_idx];
+            let creature_str = format!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
+            draw_text(&creature_str, self.stats_panel_x_pos, cur_y_pos_px, header_font_size_px, DARKGRAY);
+            cur_y_pos_px += main_font_size_px;
+        }
+    }
+        
+
+    /// Update the display
+    pub fn update_display(&self) {
+        clear_background(GRAY);
+
+        // Update the main board
+        self.update_sim_display();
+
+        // Update statistics on the side
+        self.update_stats_panel(); 
 
     }
 
@@ -109,7 +157,7 @@ impl EnvMacroquad {
 
 
 /// Test function to draw various shapes
-pub fn run_sim() {
+pub fn run_test() {
     clear_background(GRAY);
 
     // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);

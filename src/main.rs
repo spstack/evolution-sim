@@ -11,18 +11,18 @@ mod environment;
 mod env_macroquad;
 mod linalg;
 use environment::*;
-use env_macroquad::*;
 use std::io;
 use std::{thread, time::Duration};
 use macroquad::prelude::*;
 
 
-// Main application entry point for macroquad testing
+/// Main application entry point for macroquad testing. Unfortunately, this has to be done here
 #[macroquad::main("Evolution Sim!")]
 async fn main() {
     let mut env = env_macroquad::EnvMacroquad::new();
     let mut last_update = get_time();
     let mut cur_time = get_time();
+
     const MACROQUAD_FRAME_TIME_S : f64 = 0.5;    // Time between sim steps for macroquad in seconds
 
     loop {
@@ -37,6 +37,7 @@ async fn main() {
 
         next_frame().await
     }
+
 }
 
 /// main functions for test math entry
