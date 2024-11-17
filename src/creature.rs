@@ -27,8 +27,8 @@ pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 200;
 
 pub const REPRODUCE_AGE : usize = 21;                       // Age at which creature will reproduce
-pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 255, 0];   // default color each creature will be
-pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by deafult
+pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // default color each creature will be (blue)
+pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 
 pub const VISION_NEURON_INVALID_VAL : isize = -10000;         // Value that should be applied to a vision input neuron if there's nothing in view
 
@@ -166,7 +166,7 @@ impl CreatureV1 {
             id : id,
             is_alive : true,
             position : CreaturePosition {x : 0, y : 0},
-            orientation : CreatureOrientation::Up,
+            orientation : DEFAULT_ORIENTATION,
             energy : DEFAULT_ENERGY_LEVEL,
             vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0])},
             age : 0,

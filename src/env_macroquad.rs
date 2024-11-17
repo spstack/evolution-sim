@@ -14,13 +14,21 @@ use macroquad::prelude::*;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
+// Size of the board
 const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
+const NUM_GRID_SQUARES_X : usize = 50;
+const NUM_GRID_SQUARES_Y : usize = 50;
 
-const NUM_GRID_SQUARES_X : usize = 100;
-const NUM_GRID_SQUARES_Y : usize = 100;
-
+// Size of panel
 const STATS_PANEL_WIDTH : f32 = 400.0;
+
+const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
+
+// Default environment parameters
+const DEFAULT_START_CREATURES : usize = 20;
+const DEFAULT_START_FOOD : usize = 35;
+const DEFAULT_START_WALLS : usize = 50;
 
 //===============================================================================
 // DATA
@@ -68,9 +76,9 @@ impl EnvMacroquad {
             env : EnvironmentV1::new_rand(
                 NUM_GRID_SQUARES_X, // env_x_size
                 NUM_GRID_SQUARES_Y, // env_y_size
-                100, // num_start_creatures
-                100, // num_start_food
-                20, // num_walls
+                DEFAULT_START_CREATURES, // num_start_creatures
+                DEFAULT_START_FOOD, // num_start_food
+                DEFAULT_START_WALLS, // num_walls
             ),
 
             // Set position of stats panel
@@ -100,7 +108,11 @@ impl EnvMacroquad {
         for x in 0..self.env.env_x_size {
             for y in 0..self.env.env_y_size {
                 match self.env.positions[x][y] {
-                    SpaceStates::CreatureSpace(id) => self.draw_creature_square(x, y),
+                    SpaceStates::CreatureSpace(id) => {
+                        let c_id = self.env.get_creature_idx_from_id(id).unwrap(); 
+                        let creature : &CreatureV1 = &self.env.creatures[c_id];
+                        self.draw_creature_square(x, y, creature.orientation);
+                    }
                     SpaceStates::FoodSpace => self.draw_food_space(x, y),
                     SpaceStates::WallSpace => self.draw_wall_space(x, y),
                     _ => (),
@@ -142,8 +154,26 @@ impl EnvMacroquad {
     }
 
     /// Draw a single creature square to the specified location on the screen
-    fn draw_creature_square(&self, x_pos : usize, y_pos : usize) {
-        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLUE);
+    fn draw_creature_square(&self, x_pos : usize, y_pos : usize, orientation : CreatureOrientation) {
+
+        let xpos_pix = (x_pos as f32) * self.params.grid_x_size;
+        let ypos_pix = (y_pos as f32) * self.params.grid_y_size;
+
+        // Draw the rectangle "body" of the creature
+        draw_rectangle(xpos_pix, ypos_pix, self.params.grid_x_size, self.params.grid_y_size, BLUE);
+
+        // Draw a short line to indicate which direction the creature is facing
+        let x_gridsize_div_2 = self.params.grid_x_size / 2.0;
+        let y_gridsize_div_2 = self.params.grid_y_size / 2.0;
+        let center_x = xpos_pix + x_gridsize_div_2;
+        let center_y = ypos_pix + y_gridsize_div_2; 
+
+        match orientation {
+            CreatureOrientation::Up => draw_line(center_x, center_y, center_x, center_y - y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
+            CreatureOrientation::Down => draw_line(center_x, center_y, center_x, center_y + y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
+            CreatureOrientation::Left => draw_line(center_x, center_y, center_x - x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
+            CreatureOrientation::Right => draw_line(center_x, center_y, center_x + x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
+        }
     }
     /// Draw a single food space on the screen
     fn draw_food_space(&self, x_pos : usize, y_pos : usize) {
@@ -155,27 +185,6 @@ impl EnvMacroquad {
     }
 
 
-}
-
-
-/// Test function to draw various shapes
-pub fn run_test() {
-    clear_background(GRAY);
-
-    // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-    // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-    // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-    // draw_single_square(0, 0);
-    // draw_single_square(5, 5);
-    // draw_single_square(6, 5);
-    // draw_single_square(7, 5);
-    // draw_single_square(8, 5);
-    // draw_single_square(7, 5);
-    // draw_single_square(7, 6);
-    // draw_single_square(7, 5);
-    // draw_single_square(7, 4);
-
-    draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
 }
 
 
