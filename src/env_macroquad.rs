@@ -65,11 +65,12 @@ impl EnvMacroquad {
                 grid_x_size : SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32,
                 grid_y_size : SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32,
             },
-            env : EnvironmentV1::new(
+            env : EnvironmentV1::new_rand(
                 NUM_GRID_SQUARES_X, // env_x_size
                 NUM_GRID_SQUARES_Y, // env_y_size
                 100, // num_start_creatures
                 100, // num_start_food
+                20, // num_walls
             ),
 
             // Set position of stats panel
@@ -101,6 +102,7 @@ impl EnvMacroquad {
                 match self.env.positions[x][y] {
                     SpaceStates::CreatureSpace(id) => self.draw_creature_square(x, y),
                     SpaceStates::FoodSpace => self.draw_food_space(x, y),
+                    SpaceStates::WallSpace => self.draw_wall_space(x, y),
                     _ => (),
                 }
             }
@@ -149,7 +151,7 @@ impl EnvMacroquad {
     }
     /// Draw a wall space on the screen
     fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
-        // draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, BLACK);
+        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLACK);
     }
 
 

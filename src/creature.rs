@@ -163,6 +163,7 @@ impl CreatureV1 {
             match neuron_type {
                 Age => self.brain.set_input(input_neuron_idx, self.age as isize),
                 Energy => self.brain.set_input(input_neuron_idx, self.energy as isize),
+                // TODO: use visual surroundings
                 _ => {}
             } 
         }

@@ -5,6 +5,11 @@
  * Created: 4/29/2022
  * Description: main application entry point
  * ===============================================================================*/
+/* TODO LIST
+ * implement vision in V1 creatures 
+ */
+
+
 
 mod creature;
 mod environment;
@@ -65,7 +70,7 @@ r = run until no creatures left
 fn test_env_v1() {
 
     // Allocate the env
-    let mut env = EnvironmentV1::new(40, 40, 20, 20);
+    let mut env = EnvironmentV1::new_rand(40, 40, 20, 20, 5);
 
     // Show initial state
     env.show();

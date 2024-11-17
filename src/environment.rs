@@ -12,10 +12,6 @@ use rand::Rng;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
-pub const MAX_ENV_X_SIZE : usize = 100;
-pub const MAX_ENV_Y_SIZE : usize = 100;
-pub const MAX_NUM_CREATURES : usize = 50;
-
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
 pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 3;
 pub const DEFAULT_MUTATION_PROB : f32 = 0.05;
@@ -30,6 +26,7 @@ pub enum SpaceStates {
     BlankSpace,                 // Space is blank
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
     FoodSpace,                  // Space has a food in it
+    WallSpace,                  // Space that contains a wall
 }
 
 
@@ -55,19 +52,15 @@ pub struct EnvironmentV1 {
 /// Implementation of EnvironmentV1
 impl EnvironmentV1 {
 
-    /// Constructor for new environment instance
-    pub fn new(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize) -> EnvironmentV1 {
+    /// Constructor for new environment instance that's randomly populated
+    pub fn new_rand(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize, num_walls : usize) -> EnvironmentV1 {
         let mut rng = rand::thread_rng();
-
-        if env_x_size > MAX_ENV_X_SIZE || env_y_size > MAX_ENV_Y_SIZE {
-            panic!("Invalid environment size!");
-        }
 
         // Initialize all positions to be blank at first
         let mut temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
 
         // Initialize creature vector
-        let mut temp_creature_vec = Vec::<CreatureV1>::with_capacity(MAX_NUM_CREATURES);
+        let mut temp_creature_vec = Vec::<CreatureV1>::with_capacity(num_start_creatures);
 
         // Fill in random spaces with food
         for _food_num in 0..num_start_food {
@@ -90,6 +83,24 @@ impl EnvironmentV1 {
             temp_creature_vec.push(CreatureV1::new(creature_num));
             temp_creature_vec[creature_num].set_position(x, y);
 
+        }
+
+        // Fill random wall spaces
+        for _wall_num in 0..num_walls {
+            let mut done : bool = false;
+            while !done {
+                let x = rng.gen_range(0..env_x_size);
+                let y = rng.gen_range(0..env_y_size);
+
+                // Only allow overwriting of blank spaces
+                match temp_positions[x][y] {
+                    SpaceStates::BlankSpace => {
+                        temp_positions[x][y] = SpaceStates::WallSpace;
+                        done = true;
+                    },
+                    _ => {},
+                }
+            }
         }
 
         // Return a new instance of the environment
@@ -121,6 +132,7 @@ impl EnvironmentV1 {
                     SpaceStates::BlankSpace => print!("   "),
                     SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
                     SpaceStates::FoodSpace => print!(" # "),
+                    SpaceStates::WallSpace => print!("|-|"),
                 }
             }
             print!("|");
@@ -255,6 +267,9 @@ impl EnvironmentV1 {
                         creature.eat_food(self.energy_per_food_piece);
                         creature.set_position(next_position.x, next_position.y);
                     }
+
+                    // If space is wall, then move is invalid. Stay put
+                    SpaceStates::WallSpace => {}
 
                     // Otherwise, do nothing...
                     _ => {}
