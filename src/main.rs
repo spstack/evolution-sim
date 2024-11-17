@@ -10,7 +10,6 @@
  */
 
 
-
 mod creature;
 mod environment;
 mod env_macroquad;

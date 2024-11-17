@@ -1,3 +1,5 @@
+use std::path::absolute;
+
 /** ===============================================================================
  * File: environment.rs
  * Author: Scott Stack
@@ -16,12 +18,17 @@ pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
 pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 3;
 pub const DEFAULT_MUTATION_PROB : f32 = 0.05;
 
+pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
+pub const FOOD_SPACE_COLOR : [u8; 3] = [255, 0, 0];     // color of food space
+pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
+
+
 //===============================================================================
 // Environment V1 Declarations
 //===============================================================================
 
 /// Enumeration that defines the possible states 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum SpaceStates {
     BlankSpace,                 // Space is blank
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
@@ -228,19 +235,17 @@ impl EnvironmentV1 {
                     if DEBUG_LEVEL > 1 {
                         println!("Creature {} is reproducing with {} offspring!", creature.id, num_offspring);
                     }
-                    for offspring_num in 0..num_offspring {
-                        let mut new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.mutation_prob);
+                    for _offspring_num in 0..num_offspring {
+                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.mutation_prob);
                         self.num_total_creatures += 1;
                         temp_new_creatures.push(new_offspring);
                     }
                 },
 
+                // Actions that don't require any further processing
                 CreatureActions::Stay => {},
-
-                _ => {
-                    println!("Unhandled action {:?}", action);
-                    next_position = creature.position.clone();
-                }
+                CreatureActions::RotateCCW => {}, // handled inside creature code
+                CreatureActions::RotateCW => {}, // handled inside creature code
             }
 
             // If there was an update to the position, check for collisions, food, etc...
@@ -275,7 +280,6 @@ impl EnvironmentV1 {
                     _ => {}
                 }
             }
-
         } // end loop updating creatures
 
 
@@ -291,6 +295,9 @@ impl EnvironmentV1 {
             self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
             self.creatures.push(new_creature);
         }
+
+        // Evaluate the vision of each of the creatures now that everything is updated
+        self.update_creature_vision();
         
         // If proper debug level show the env after each step
         if DEBUG_LEVEL > 0 {
@@ -331,6 +338,94 @@ impl EnvironmentV1 {
         }
     }
 
+    /// Update what each of the creatures is currently "seeing"
+    fn update_creature_vision(&mut self) {
+        for creature in &mut self.creatures {
+            // Define variables for position we will be looking in
+            let mut xpos = creature.position.x;
+            let mut ypos = creature.position.y;
+
+            for _step in 0..MAX_CREATURE_VIEW_DISTANCE {
+                // Update the position we're currently looking in by checking the direction creature is facing
+                match creature.orientation {
+                    CreatureOrientation::Up => {
+                        if ypos == 0 {
+                            break;
+                        }
+                        ypos -= 1;
+                    },
+                    CreatureOrientation::Down => ypos += 1,
+                    CreatureOrientation::Right => xpos += 1,
+                    CreatureOrientation::Left => {
+                        if xpos == 0 {
+                            break;
+                        }
+                        xpos -= 1;
+                    },
+                }
+
+                // Check the bounds - if we're at the end or wrapped around, there's nothing to see. Return
+                if (xpos >= self.env_x_size) || (ypos >= self.env_y_size) {
+                    break;
+                }
+
+                // This is super ugly, but just takes the x and y distances and adds them
+                let distance : usize = ((xpos as i32 - creature.position.x as i32).abs() + (ypos as i32 - creature.position.y as i32).abs()) as usize;
+
+                // Check what type space is there
+                match self.positions[xpos][ypos] {
+                    SpaceStates::BlankSpace => {},
+
+                    // Food space is in view
+                    SpaceStates::FoodSpace => {
+                        let vis : CreatureVisionState = CreatureVisionState {
+                            obj_in_view : true,
+                            dist : distance,
+                            color : CreatureColor::new_from_vec(FOOD_SPACE_COLOR)
+                        };
+                        creature.set_vision(vis);
+                    },
+
+                    // Wall space in view
+                    SpaceStates::WallSpace => {
+                        let vis : CreatureVisionState = CreatureVisionState {
+                            obj_in_view : true,
+                            dist : distance,
+                            color : CreatureColor::new_from_vec(WALL_SPACE_COLOR)
+                        };
+                        creature.set_vision(vis);
+                    },
+
+                    // Another creature is in view, update the color with the creature's color
+                    SpaceStates::CreatureSpace(c_id) => {
+                        // let c_idx = self.get_creature_idx_from_id(c_id).unwrap();
+                        // let tgt_creature_color = self.creatures[c_idx].color.get_as_vec();
+                        let tgt_creature_color = [0,0,255]; // TODO: fix borrow checker error when above is uncommented
+                        let vis : CreatureVisionState = CreatureVisionState {
+                            obj_in_view : true,
+                            dist : distance,
+                            color : CreatureColor::new_from_vec(tgt_creature_color)
+                        };
+                        creature.set_vision(vis);
+                    }
+                }
+            }
+        }
+
+
+
+    }
+
+
+    /// Get the index of the creature into the self.creatures array from creature ID
+    pub fn get_creature_idx_from_id(&self, creature_id : usize) -> Result<usize, &str> {
+        for creature_idx in 0..self.creatures.len() {
+            if self.creatures[creature_idx].id == creature_id {
+                return Ok(creature_idx);
+            }
+        }
+        return Err("Invalid creature id");
+    }
 
     /// Print status on a given creature
     pub fn print_creature(&self, id : usize) {
