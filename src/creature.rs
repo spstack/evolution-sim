@@ -14,7 +14,6 @@
 // Define external crates to use in this module
 use rand::Rng;
 use std::fmt::Debug;
-use crate::linalg::*;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, Result};
@@ -262,10 +261,10 @@ impl CreatureV1 {
     /// This should be called before `perform_next_action`
     pub fn sense_surroundings(&mut self) {
         // Get vision state node values first
-        let mut vis_dist : isize = 0;
-        let mut vis_red : isize = 0;
-        let mut vis_green : isize = 0;
-        let mut vis_blue : isize = 0;
+        let vis_dist : isize;
+        let vis_red : isize;
+        let vis_green : isize;
+        let vis_blue : isize;
 
         if self.vision_state.obj_in_view {
             vis_dist = self.vision_state.dist as isize;
@@ -426,7 +425,7 @@ pub struct BrainV1 {
     /// Current value that each neuron (node) is holding
     pub values : Vec<isize>,
 
-    // Defines the types of the input and output nodes just for diagnostic info
+    // Defines the types of the input and output nodes
     pub input_node_types : Vec<CreatureInputs>,
     pub output_node_types : Vec<CreatureActions>,
 }

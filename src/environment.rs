@@ -15,7 +15,7 @@ use rand::Rng;
 pub const DEBUG_LEVEL : usize = 0;
 
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 3;
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 10;
 pub const DEFAULT_MUTATION_PROB : f32 = 0.05;
 
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"

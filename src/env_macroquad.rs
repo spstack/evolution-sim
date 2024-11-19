@@ -26,8 +26,8 @@ const STATS_PANEL_WIDTH : f32 = 400.0;
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 20;
-const DEFAULT_START_FOOD : usize = 35;
+const DEFAULT_START_CREATURES : usize = 50;
+const DEFAULT_START_FOOD : usize = 50;
 const DEFAULT_START_WALLS : usize = 50;
 
 //===============================================================================
@@ -43,7 +43,7 @@ struct SimParameters {
 
 /// Environment
 pub struct EnvMacroquad {
-    pub params : SimParameters,     // Constant values that sim is initialized with
+    params : SimParameters,     // Constant values that sim is initialized with
     pub env : EnvironmentV1,        // Contains the whole environment
 
     stats_panel_x_pos : f32,
@@ -123,20 +123,20 @@ impl EnvMacroquad {
 
     /// Update the statistics panel
     fn update_stats_panel(&self) {
-        const header_font_size_px : f32 = 14.0;
-        const main_font_size_px : f32 = 10.0;
-        let mut cur_y_pos_px = self.stats_panel_y_pos + header_font_size_px;
+        const HEADER_FONT_SIZE_PX : f32 = 14.0;
+        const MAIN_FONT_SIZE_PX : f32 = 10.0;
+        let mut cur_y_pos_px = self.stats_panel_y_pos + HEADER_FONT_SIZE_PX;
 
         // Write the header
         let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
-        draw_text(&header_str, self.stats_panel_x_pos, cur_y_pos_px, header_font_size_px, BLACK);
-        cur_y_pos_px += header_font_size_px;
+        draw_text(&header_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, BLACK);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
 
         for creature_idx in 0..self.env.creatures.len() {
             let creature = &self.env.creatures[creature_idx];
             let creature_str = format!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
-            draw_text(&creature_str, self.stats_panel_x_pos, cur_y_pos_px, header_font_size_px, DARKGRAY);
-            cur_y_pos_px += main_font_size_px;
+            draw_text(&creature_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+            cur_y_pos_px += MAIN_FONT_SIZE_PX;
         }
     }
         

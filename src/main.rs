@@ -10,10 +10,10 @@
  */
 
 
+mod linalg;
 mod creature;
 mod environment;
 mod env_macroquad;
-mod linalg;
 use environment::*;
 use std::io;
 use std::{thread, time::Duration};
@@ -27,7 +27,7 @@ async fn main() {
     let mut last_update = get_time();
     let mut cur_time = get_time();
 
-    const MACROQUAD_FRAME_TIME_S : f64 = 0.5;    // Time between sim steps for macroquad in seconds
+    const MACROQUAD_FRAME_TIME_S : f64 = 0.2;    // Time between sim steps for macroquad in seconds
 
     loop {
         // Update display every time through
