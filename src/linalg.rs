@@ -1,4 +1,4 @@
-use std::process::Output;
+use std::{default, process::Output};
 
 /** ===============================================================================
 * File: linalg.rs
@@ -25,6 +25,8 @@ where
     T: std::ops::AddAssign,
     T: std::default::Default,
     T: Copy,
+    T: std::cmp::PartialOrd,
+    T: rand::distributions::uniform::SampleUniform,
 {
 
     /// Return a matrix initialized with all zero data
@@ -37,6 +39,24 @@ where
         return temp_mat;
     }
 
+    /// Return a matrix initialized with random data
+    pub fn random(nrows : usize, ncols : usize, min_val : T, max_val : T) -> Matrix<T> {
+        let mut rng = rand::thread_rng();
+        let mut temp_mat = Matrix::<T> {
+            data : vec![T::default(); nrows * ncols],
+            nrows : nrows,
+            ncols : ncols,
+        };
+
+        // randomly set each val
+        for i in 0..temp_mat.nrows {
+            for j in 0..temp_mat.ncols {
+                temp_mat.set(i, j, rng.gen_range(min_val..=max_val));
+            }
+        }
+
+        return temp_mat;
+    }
 
 
     /// Get a row/col from the matrix
@@ -125,7 +145,7 @@ where
     }
 
     /// Add 2 matrices
-    fn add(&self, other : &Matrix<T>) -> Matrix<T> {
+    pub fn add(&self, other : &Matrix<T>) -> Matrix<T> {
         if self.ncols != other.ncols || self.nrows != other.nrows {
             panic!("Error: Attempted to add matrices with different dimensions");
         }
@@ -149,7 +169,7 @@ where
     }
 
     /// Subtract 2 matrices
-    fn subtract(&self, other : &Matrix<T>) -> Matrix<T> {
+    pub fn subtract(&self, other : &Matrix<T>) -> Matrix<T> {
         if self.ncols != other.ncols || self.nrows != other.nrows {
             panic!("Error: Attempted to add matrices with different dimensions");
         }
@@ -175,62 +195,6 @@ where
 
 }
 
-
-
-/// ================================================================
-///  Implementation of type specific methods
-/// ================================================================
-
-/// isize type Matrix implementation
-impl Matrix<isize> {
-
-    /// Return a matrix initialized with random isize typed data
-    pub fn random(nrows : usize, ncols : usize) -> Matrix<isize> {
-        const RAND_VAL_MIN : isize = -1000;
-        const RAND_VAL_MAX : isize = 1000;
-        let mut rng = rand::thread_rng();
-        let mut temp_mat = Matrix::<isize> {
-            data : vec![0; nrows * ncols],
-            nrows : nrows,
-            ncols : ncols,
-        };
-
-        // randomly set each val
-        for i in 0..temp_mat.nrows {
-            for j in 0..temp_mat.ncols {
-                temp_mat.set(i, j, rng.gen_range(RAND_VAL_MIN..=RAND_VAL_MAX));
-            }
-        }
-
-        return temp_mat;
-    }
-}
-
-
-/// Float32 type Matrix implementation
-impl Matrix<f32> {
-
-    /// Return a matrix initialized with random isize typed data
-    pub fn random(nrows : usize, ncols : usize) -> Matrix<f32> {
-        const RAND_VAL_MIN : f32 = -1000.0;
-        const RAND_VAL_MAX : f32 = 1000.0;
-        let mut rng = rand::thread_rng();
-        let mut temp_mat = Matrix::<f32> {
-            data : vec![0.0; nrows * ncols],
-            nrows : nrows,
-            ncols : ncols,
-        };
-
-        // randomly set each val
-        for i in 0..temp_mat.nrows {
-            for j in 0..temp_mat.ncols {
-                temp_mat.set(i, j, rng.gen_range(RAND_VAL_MIN..=RAND_VAL_MAX));
-            }
-        }
-
-        return temp_mat;
-    }
-}
 
 
 

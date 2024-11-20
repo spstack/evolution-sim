@@ -11,6 +11,7 @@
 
 
 mod linalg;
+mod neural_net;
 mod creature;
 mod environment;
 mod env_macroquad;
