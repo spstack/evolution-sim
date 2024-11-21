@@ -1,5 +1,3 @@
-use std::vec;
-
 /** ===============================================================================
  * File: neural_net.rs
  * Author: Scott Stack
@@ -7,7 +5,15 @@ use std::vec;
  * creatures in the environment
  * ===============================================================================*/
 use crate::linalg::*;
+use macroquad::input;
+use num;
 
+
+/// Possible error types to be returned from neural network functions
+#[derive(Debug)]
+pub enum NeuralNetErrors {
+    OUTPUT_ACTIVATION_ERROR,    // Error finding the max activation value of an output neuron after evaluating network
+}
 
 /// Implements a simple generic neural network for use as a brain for creatures
 /// The generic represents the underlying type that network values/weights/biases
@@ -37,10 +43,11 @@ T: std::default::Default,
 T: Copy,
 T: std::cmp::PartialOrd,
 T: rand::distributions::uniform::SampleUniform,
+T: num::Zero,
 {
 
     /// Get a new randomly populated network
-    pub fn new(layer_sizes : Vec<usize>, min_node_val : T, max_node_val : T) -> NeuralNet<T> {
+    pub fn new(layer_sizes : &Vec<usize>, min_node_val : T, max_node_val : T) -> NeuralNet<T> {
         let mut weights : Vec<Matrix<T>> = Vec::new();
         let mut biases : Vec<Matrix<T>> = Vec::new();
 
@@ -52,7 +59,7 @@ T: rand::distributions::uniform::SampleUniform,
             let cur_layer_size = layer_sizes[layer_num];
             let next_layer_size = layer_sizes[layer_num+1];
 
-            weights.push(Matrix::random(cur_layer_size, next_layer_size, min_node_val, max_node_val));
+            weights.push(Matrix::random(next_layer_size, cur_layer_size, min_node_val, max_node_val));
             biases.push(Matrix::random(next_layer_size, 1, min_node_val, max_node_val));
             activations.push(Matrix::new(next_layer_size, 1));
         }
@@ -67,38 +74,48 @@ T: rand::distributions::uniform::SampleUniform,
 
 
     /// Evaluate the network (feed-forward) and return output node number with highest activation 
-    pub fn evaluate_network(&mut self) -> usize {
+    pub fn evaluate_network(&mut self) -> Result<usize, NeuralNetErrors> {
 
         // calculate the activation for each layer
-        for layer_num in 0..self.num_layers {
+        for layer_num in 0..(self.num_layers - 1) {
             self.activations[layer_num+1] = self.weights[layer_num].mult(&self.activations[layer_num]); 
             self.activations[layer_num+1] = self.activations[layer_num+1].add(&self.biases[layer_num]);
 
-            // Use activation function
-            // TODO: Finish this and fix borrow checker
-            // self.relu(&mut self.activations[layer_num+1]);
+            // Use activation function to update values
+            for i in 0..self.activations[layer_num+1].get_nrows() {
+                let cur_val = self.activations[layer_num+1].get(i, 0);
+                self.activations[layer_num+1].set(i, 0, NeuralNet::relu(cur_val));
+            }
         }
 
-        return 0usize;
+        // Get values of output neurons and return the one that has the highest activation val
+        let output_layer = &self.activations[self.num_layers - 1];
+        let mut max_act: T = T::zero();
+        let mut max_act_node: Result<usize, NeuralNetErrors> = Err(NeuralNetErrors::OUTPUT_ACTIVATION_ERROR);
+        for i in 0..output_layer.get_nrows() {
+            let act = output_layer.get(i, 0);
+            if  act >= max_act {
+                max_act = act;
+                max_act_node = Ok(i);
+            }
+        }
+
+        return max_act_node;
     }
 
     /// Set value of specified input node
     pub fn set_input_node(&mut self, input_node_idx : usize, val : T) {
-
+        self.activations[0].set(input_node_idx, 0, val);
     }
 
-    /// Perform RELU activation function in-place on nx1 matrix
-    fn relu(&self, vector : &mut Matrix<T>) {
-        if vector.get_ncols() != 1 {
-            panic!("Attempted to perform RELU on non-vector with {} cols", vector.get_ncols());
+    /// Perform RELU activation function on number.
+    /// Static method that can be called on anything
+    fn relu(num : T) -> T {
+        if num >= T::zero() {
+            return num;
+        } else {
+            return T::zero();
         }
-
-        for i in 0..vector.get_nrows() {
-            // if vector.get(i, 1) >= 0 {
-            // TODO: Fix
-            // }
-        }
-
     }
 
 }
@@ -110,13 +127,31 @@ mod neuralnet_test {
     use super::*;
 
     #[test]
-    fn test_neural_net_init() {
+    fn test_neuralnet_init() {
         let layer_sizes = vec![5, 4, 4, 4, 8];
-        let nn = NeuralNet::<isize>::new(layer_sizes, -1000, 1000);
+        let nn = NeuralNet::<isize>::new(&layer_sizes, -1000, 1000);
 
         // Check that couple weights are within bounds
         assert!(nn.weights[0].get(0,0) < 1000 && nn.weights[0].get(0,0) > -1000);
         assert!(nn.weights[1].get(0,0) < 1000 && nn.weights[1].get(0,0) > -1000);
         assert!(nn.weights[1].get(1,0) < 1000 && nn.weights[1].get(1,0) > -1000);
+    }
+
+    #[test]
+    fn test_neuralnet_eval() {
+        let layer_sizes = vec![6, 10, 10, 8];
+        let mut nn = NeuralNet::<f32>::new(&layer_sizes, -1e6, 1e6);
+
+        // Set inputs
+        let input_neuron_vals = [1.2, 3.4, 1000.3, 6.2, -20000.0, -0.223];
+        for (i, val) in input_neuron_vals.iter().enumerate() {
+            nn.set_input_node(i, *val);
+        }
+
+        // Eval network
+        let res = nn.evaluate_network().unwrap();
+        assert!(res < layer_sizes[layer_sizes.len()-1]);
+        println!("Output layer activated {}", res);
+
     }
 }
