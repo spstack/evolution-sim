@@ -112,6 +112,8 @@ impl CreatureColor {
 use CreatureActions::*;
 use CreatureInputs::*;
 
+use crate::{neural_net::NeuralNet, DEFAULT_MUTATION_PROB};
+
 /// Version 1 of a simple creature. It contains all of the state information about a creature
 /// The environment that creates the creature should call ``
 #[derive(Serialize, Deserialize)]
@@ -717,6 +719,62 @@ impl BrainV1 {
             println!(" {:6}", self.values[node]);
         }
     }
+}
+
+
+/// Second version of a creature brain that uses more generic neural network
+pub struct BrainV2 {
+    // Underlying neural network
+    net : NeuralNet<f32>,
+
+    // Input types (maps input neuron type to index)
+    pub input_node_types : Vec<CreatureInputs>,
+
+    // Input types (maps output neuron index to type)
+    pub output_node_types : Vec<CreatureActions>,
+}
+
+// Define the number and size of internal layers in the brain neural net
+// (input/output will be overwritten by the constructor)
+const BRAIN_V2_LAYER_SIZES : [usize; 4] = [NUM_INPUT_NODES, 8, 8, NUM_OUTPUT_NODES]; // 2 internal layers with 8 neurons each
+const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -1000.0;  // Min initial value that a node will take
+const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 1000.0;   // Max initial value that a node will take 
+
+impl BrainV2 {
+
+    /// Create a new instance of the BrainV2 with random values for all weights/biases
+    /// and explicit mapping of input/output neuron types
+    /// * `input_node_types` is a vector mapping the input neuron idx to which type of input it is. It
+    /// also determines the number of neurons in the input layer by it's size
+    /// * `output_node_types` is a vector mapping the output neuron idx to which type of action it is. It
+    /// also determines the number of neurons in the output layer by it's size
+    pub fn new(input_node_types : Vec<CreatureInputs>, output_node_types : Vec<CreatureActions>) -> BrainV2 {
+        let mut layer_sizes  = BRAIN_V2_LAYER_SIZES.to_vec();
+        let output_layer_idx = layer_sizes.len() - 1;
+        layer_sizes[0] = input_node_types.len();
+        layer_sizes[output_layer_idx] = output_node_types.len();
+        return BrainV2 {
+            net : NeuralNet::new(&layer_sizes, BRAIN_V2_MIN_INIT_NODE_VAL, BRAIN_V2_MAX_INIT_NODE_VAL),
+            input_node_types : input_node_types, 
+            output_node_types : output_node_types,
+        };
+    }
+
+    /// Create a new brain copy, but randomly mutate some of the weights/biases
+    /// with chance of mutation for each of mutation_prob 
+    pub fn new_copy(other_brain : &BrainV2, mutation_prob : f32) -> BrainV2 {
+
+        // Copy the neural net and apply random mutations to it
+        let mut nn = other_brain.net.clone();
+        nn.apply_rand_mutations(mutation_prob, BRAIN_V2_MIN_INIT_NODE_VAL, BRAIN_V2_MAX_INIT_NODE_VAL);
+
+        return BrainV2 {
+            net : nn,
+            input_node_types : other_brain.input_node_types.clone(), 
+            output_node_types : other_brain.output_node_types.clone(),
+        };
+    }
+
 }
 
 

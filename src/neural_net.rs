@@ -5,6 +5,7 @@
  * creatures in the environment
  * ===============================================================================*/
 use crate::linalg::*;
+use rand::Rng;
 use macroquad::input;
 use num;
 
@@ -18,6 +19,7 @@ pub enum NeuralNetErrors {
 /// Implements a simple generic neural network for use as a brain for creatures
 /// The generic represents the underlying type that network values/weights/biases
 /// will use (f32, isize, etc...)
+#[derive(Debug, Clone)]
 pub struct NeuralNet<T> {
     // num layers
     pub num_layers : usize,
@@ -106,6 +108,37 @@ T: num::Zero,
     /// Set value of specified input node
     pub fn set_input_node(&mut self, input_node_idx : usize, val : T) {
         self.activations[0].set(input_node_idx, 0, val);
+    }
+
+
+    /// Apply random mutation to every weight/bias with probability of mutation `mutation_prob` 
+    /// to a value between val_min and val_max
+    pub fn apply_rand_mutations(&mut self, mutation_prob : f32, val_min : T, val_max : T) {
+        let mut rng = rand::thread_rng();
+
+        // apply mutations to biases in each layer
+        for layer in 0..(self.num_layers - 1) {
+            // Apply mutations to biases
+            let num_nodes = self.biases[layer].get_nrows();
+            let num_nodes_next = self.weights[layer].get_ncols();
+            for i in 0..num_nodes {
+
+                // Mutate biases 
+                // If random number [0,1) is less than mutation_prob, entry should be mutated!
+                if rng.gen::<f32>() <= mutation_prob {
+                    // Set to new random value
+                    self.biases[layer].set(i, 0, rng.gen_range(val_min..=val_max));
+                }
+
+                // Mutate weights
+                for j in 0..num_nodes_next {
+                    if rng.gen::<f32>() <= mutation_prob {
+                        // Set to new random value
+                        self.weights[layer].set(i, j, rng.gen_range(val_min..=val_max));
+                    }
+                }
+            }
+        }
     }
 
     /// Perform RELU activation function on number.
