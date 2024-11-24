@@ -435,7 +435,7 @@ impl EnvironmentV1 {
             return;
         }
 
-        self.creatures[id].brain.show();
+        // self.creatures[id].brain.show();
     }
 } 
 

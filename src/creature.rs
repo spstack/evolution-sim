@@ -16,7 +16,6 @@ use rand::Rng;
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, Result};
 
 //===============================================================================
 // CONSTANTS
@@ -29,7 +28,7 @@ pub const REPRODUCE_AGE : usize = 21;                       // Age at which crea
 pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 
-pub const VISION_NEURON_INVALID_VAL : isize = -10000;         // Value that should be applied to a vision input neuron if there's nothing in view
+pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
 
 const DEBUG_LEVEL : usize = 1;  // Debug print level (higher number = more detail)
 
@@ -43,7 +42,7 @@ pub enum CreatureActions {
     MoveRight,
     RotateCW,   // rotate clockwise
     RotateCCW,  // rotate counter-clockwise
-    Stay,
+    Stay,       // Do nothing
     Reproduce,
     // Kill, //....soon
 }
@@ -120,7 +119,7 @@ use crate::{neural_net::NeuralNet, DEFAULT_MUTATION_PROB};
 pub struct CreatureV1 {
 
     /// Creatures brain represented as a neural network
-    pub brain : BrainV1,
+    pub brain : BrainV2,
 
     /// ID number of this creature
     pub id : usize,
@@ -162,8 +161,11 @@ impl CreatureV1 {
 
     /// Constructor returns creature instance w/ default values
     pub fn new(id : usize) -> CreatureV1 {
-        let mut temp_creature = CreatureV1 {
-            brain : BrainV1::new(),
+        let input_neuron_types = vec![Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue];
+        let output_neuron_types = vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW];
+
+        let temp_creature = CreatureV1 {
+            brain : BrainV2::new(&input_neuron_types,&output_neuron_types),
             id : id,
             is_alive : true,
             position : CreaturePosition {x : 0, y : 0},
@@ -173,26 +175,22 @@ impl CreatureV1 {
             age : 0,
             last_action : CreatureActions::Stay,
             color : CreatureColor::new_from_vec(DEFAULT_CREATURE_COLOR),
-            input_neuron_types : vec![Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue],
-            output_neuron_types : vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW],
+            input_neuron_types : input_neuron_types,
+            output_neuron_types : output_neuron_types,
         };
-
-        // Initialize the neural network
-        temp_creature.brain.assign_input_node_types(&temp_creature.input_neuron_types);
-        temp_creature.brain.assign_output_node_types(&temp_creature.output_neuron_types);
 
         return temp_creature;
     }
 
     /// Constructor to create a new creature from a provided parent (genes copied with optional mutations)
     pub fn new_offspring(id : usize, parent : &CreatureV1, mutation_prob : f32) -> CreatureV1 {
-        let parent_dna = parent.brain.get_dna_copy();
-        if DEBUG_LEVEL > 1 {
-            println!("Initializing offspring w/ dna {parent_dna:?}");
-        }
+        // let parent_dna = parent.brain.get_dna_copy();
+        // if DEBUG_LEVEL > 1 {
+        //     println!("Initializing offspring w/ dna {parent_dna:?}");
+        // }
 
         let mut temp_creature = CreatureV1 {
-            brain : BrainV1::new_from_dna(&parent_dna, mutation_prob),
+            brain : BrainV2::new_copy(&parent.brain, mutation_prob),
             id : id,
             is_alive : true,
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
@@ -206,15 +204,12 @@ impl CreatureV1 {
             output_neuron_types : vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW],
         };
 
-        temp_creature.brain.assign_input_node_types(&temp_creature.input_neuron_types);
-        temp_creature.brain.assign_output_node_types(&temp_creature.output_neuron_types);
-
         return temp_creature;
     }
 
 
     /// Constructor to create a new creature from a JSON string
-    pub fn new_from_json(id : usize, json_in : &str) -> Result<CreatureV1> {
+    pub fn new_from_json(id : usize, json_in : &str) -> serde_json::Result<CreatureV1> {
         // This is pretty neat we can basically just tell serde_json to copy all
         // fields into a given structure.
         let mut temp_creature : CreatureV1 = serde_json::from_str(json_in)?;
@@ -263,17 +258,18 @@ impl CreatureV1 {
     /// This should be called before `perform_next_action`
     pub fn sense_surroundings(&mut self) {
         // Get vision state node values first
-        let vis_dist : isize;
-        let vis_red : isize;
-        let vis_green : isize;
-        let vis_blue : isize;
+        let vis_dist : f32;
+        let vis_red : f32;
+        let vis_green : f32;
+        let vis_blue : f32;
 
         if self.vision_state.obj_in_view {
-            vis_dist = self.vision_state.dist as isize;
-            vis_red = self.vision_state.color.red as isize;
-            vis_green = self.vision_state.color.green as isize;
-            vis_blue = self.vision_state.color.blue as isize;
+            vis_dist = self.vision_state.dist as f32;
+            vis_red = self.vision_state.color.red as f32;
+            vis_green = self.vision_state.color.green as f32;
+            vis_blue = self.vision_state.color.blue as f32;
         } else {
+            // Set vision neurons to something way out there to try to communicate long distance
             vis_dist = VISION_NEURON_INVALID_VAL;
             vis_red = VISION_NEURON_INVALID_VAL;
             vis_green = VISION_NEURON_INVALID_VAL;
@@ -284,8 +280,8 @@ impl CreatureV1 {
         // Loop through each input neuron and set it depending on the type
         for (input_neuron_idx, neuron_type) in self.input_neuron_types.iter().enumerate() {
             match neuron_type {
-                Age => self.brain.set_input(input_neuron_idx, self.age as isize),
-                Energy => self.brain.set_input(input_neuron_idx, self.energy as isize),
+                Age => self.brain.set_input(input_neuron_idx, self.age as f32),
+                Energy => self.brain.set_input(input_neuron_idx, self.energy as f32),
                 VisionDistance => self.brain.set_input(input_neuron_idx, vis_dist),
                 VisionColorRed => self.brain.set_input(input_neuron_idx, vis_red),
                 VisionColorGreen => self.brain.set_input(input_neuron_idx, vis_green),
@@ -324,16 +320,16 @@ impl CreatureV1 {
 
         // Otherwise, evaluate the brain network based on the current state of the input neurons
         // To check what our next action will be
-        self.brain.evaluate_network();
+        let action = self.brain.get_next_action();
 
         // Get the value of the action to be taken
-        let action = self.brain.get_current_action();
+        // let action = self.brain.get_current_action();
         self.last_action = action;
 
         // Show the state of the brain if debug level high enough
-        if DEBUG_LEVEL > 1 {
-            self.brain.show();
-        }
+        // if DEBUG_LEVEL > 1 {
+        //     self.brain.show();
+        // }
 
         // NOTE: the calling environment will have to handle the action depending on the 
         // state of the environment. The only thing that does not depend on the env
@@ -723,6 +719,7 @@ impl BrainV1 {
 
 
 /// Second version of a creature brain that uses more generic neural network
+#[derive(Deserialize, Serialize)]
 pub struct BrainV2 {
     // Underlying neural network
     net : NeuralNet<f32>,
@@ -748,15 +745,15 @@ impl BrainV2 {
     /// also determines the number of neurons in the input layer by it's size
     /// * `output_node_types` is a vector mapping the output neuron idx to which type of action it is. It
     /// also determines the number of neurons in the output layer by it's size
-    pub fn new(input_node_types : Vec<CreatureInputs>, output_node_types : Vec<CreatureActions>) -> BrainV2 {
+    pub fn new(input_node_types : &Vec<CreatureInputs>, output_node_types : &Vec<CreatureActions>) -> BrainV2 {
         let mut layer_sizes  = BRAIN_V2_LAYER_SIZES.to_vec();
         let output_layer_idx = layer_sizes.len() - 1;
         layer_sizes[0] = input_node_types.len();
         layer_sizes[output_layer_idx] = output_node_types.len();
         return BrainV2 {
             net : NeuralNet::new(&layer_sizes, BRAIN_V2_MIN_INIT_NODE_VAL, BRAIN_V2_MAX_INIT_NODE_VAL),
-            input_node_types : input_node_types, 
-            output_node_types : output_node_types,
+            input_node_types : input_node_types.clone(), 
+            output_node_types : output_node_types.clone(),
         };
     }
 
@@ -774,6 +771,18 @@ impl BrainV2 {
             output_node_types : other_brain.output_node_types.clone(),
         };
     }
+
+    /// Set the value of the input neuron at specified index
+    pub fn set_input(&mut self, neuron_idx : usize, value : f32) {
+        self.net.set_input_node(neuron_idx, value);
+    }
+
+    /// Evaluate the neural network and output the next action the creature will take
+    pub fn get_next_action(&mut self) -> CreatureActions {
+        let output_idx = self.net.evaluate_network().unwrap();
+        return self.output_node_types[output_idx];
+    }
+
 
 }
 

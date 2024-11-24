@@ -6,12 +6,12 @@
  * ===============================================================================*/
 use crate::linalg::*;
 use rand::Rng;
-use macroquad::input;
 use num;
+use serde::{Deserialize, Serialize};
 
 
 /// Possible error types to be returned from neural network functions
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum NeuralNetErrors {
     OUTPUT_ACTIVATION_ERROR,    // Error finding the max activation value of an output neuron after evaluating network
 }
@@ -19,7 +19,7 @@ pub enum NeuralNetErrors {
 /// Implements a simple generic neural network for use as a brain for creatures
 /// The generic represents the underlying type that network values/weights/biases
 /// will use (f32, isize, etc...)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct NeuralNet<T> {
     // num layers
     pub num_layers : usize,
@@ -46,6 +46,8 @@ T: Copy,
 T: std::cmp::PartialOrd,
 T: rand::distributions::uniform::SampleUniform,
 T: num::Zero,
+T: for<'a> Deserialize<'a>,
+T: Serialize,
 {
 
     /// Get a new randomly populated network

@@ -1,5 +1,3 @@
-use std::{default, process::Output};
-
 /** ===============================================================================
 * File: linalg.rs
 * Author: Scott Stack
@@ -7,9 +5,10 @@ use std::{default, process::Output};
 * ===============================================================================
 */
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// Generic 2D matrix type used in linear algebra
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Matrix<T> {
     data : Vec<T>,          // Internal flat representation of the matrix
     nrows : usize,          // Number of rows
