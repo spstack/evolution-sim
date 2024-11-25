@@ -1,5 +1,3 @@
-use std::path::absolute;
-
 /** ===============================================================================
  * File: environment.rs
  * Author: Scott Stack
@@ -14,9 +12,11 @@ use rand::Rng;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
-pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 10;
-pub const DEFAULT_MUTATION_PROB : f32 = 0.05;
+pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;   // How much energy each piece of food will give a creature
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 10; // Number of offspring that each creature will have upon each reproduction event
+pub const DEFAULT_MUTATION_PROB : f32 = 0.05;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
+pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
+pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
 
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
 pub const FOOD_SPACE_COLOR : [u8; 3] = [255, 0, 0];     // color of food space
@@ -47,11 +47,16 @@ pub struct EnvironmentV1 {
     energy_per_food_piece : usize,          // Number of energy units that will be given per food consumed 
     max_offspring_per_reproduce : usize,    // Maximum number of offspring that will be produced by one reproduction event
     mutation_prob : f32,                    // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
+    avg_new_food_per_day : f32,             // Average number of new food pieces added to the environment per day
 
     // Current state
     pub creatures : Vec<CreatureV1>,// Vector containing all creature instances
-    pub positions : Vec<Vec<SpaceStates>>, //[[SpaceStates; MAX_ENV_Y_SIZE]; MAX_ENV_X_SIZE], // Contains the states of each space.
+    pub positions : Vec<Vec<SpaceStates>>, // Contains the states of each space.
     time_step : usize,              // Represents the current time step in the sim
+    num_food : usize,               // Number of current food pieces on the board
+    num_creatures : usize,          // Number of living creatures on the board
+    num_walls : usize,              // Number of wall spaces on the board
+    num_blank : usize,              // Number of blank spaces on the board
     num_total_creatures : usize,    // Number of total creatures created throughout sim
 }
 
@@ -61,57 +66,15 @@ impl EnvironmentV1 {
 
     /// Constructor for new environment instance that's randomly populated
     pub fn new_rand(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize, num_walls : usize) -> EnvironmentV1 {
-        let mut rng = rand::thread_rng();
-
         // Initialize all positions to be blank at first
-        let mut temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
+        let temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
 
         // Initialize creature vector
-        let mut temp_creature_vec = Vec::<CreatureV1>::with_capacity(num_start_creatures);
+        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(num_start_creatures);
+        let num_spaces = env_x_size * env_y_size;
 
-        // Fill in random spaces with food
-        for _food_num in 0..num_start_food {
-            let x = rng.gen_range(0..env_x_size);
-            let y = rng.gen_range(0..env_y_size);
-            temp_positions[x][y] = SpaceStates::FoodSpace;
-        }
-
-        // Fill in random spaces with creatures (no worries if they overwrite food)
-        for creature_num in 0..num_start_creatures {
-
-            // Generate the random location of new creature
-            let x = rng.gen_range(0..env_x_size);
-            let y = rng.gen_range(0..env_y_size);
-
-            // Set the space to creature space
-            temp_positions[x][y] = SpaceStates::CreatureSpace(creature_num);
-
-            // Create new creature!
-            temp_creature_vec.push(CreatureV1::new(creature_num));
-            temp_creature_vec[creature_num].set_position(x, y);
-
-        }
-
-        // Fill random wall spaces
-        for _wall_num in 0..num_walls {
-            let mut done : bool = false;
-            while !done {
-                let x = rng.gen_range(0..env_x_size);
-                let y = rng.gen_range(0..env_y_size);
-
-                // Only allow overwriting of blank spaces
-                match temp_positions[x][y] {
-                    SpaceStates::BlankSpace => {
-                        temp_positions[x][y] = SpaceStates::WallSpace;
-                        done = true;
-                    },
-                    _ => {},
-                }
-            }
-        }
-
-        // Return a new instance of the environment
-        return EnvironmentV1 {
+        // Create temporary environment, transferring ownership of vectors
+        let mut temp_env = EnvironmentV1 {
             env_x_size : env_x_size,
             env_y_size : env_y_size,
             num_start_creatures : num_start_creatures,  
@@ -119,11 +82,45 @@ impl EnvironmentV1 {
             energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
             max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
             mutation_prob : DEFAULT_MUTATION_PROB,
+            avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP,
             creatures : temp_creature_vec,
             positions : temp_positions,
             time_step : 0,
+            num_food : 0, // set to zero as these will be added later
+            num_creatures : 0,
+            num_walls : 0,
+            num_blank : num_spaces,
             num_total_creatures : num_start_creatures,
+        };
+
+        // Fill in random spaces with food
+        for _food_num in 0..num_start_food {
+            let pos = temp_env.get_rand_blank_space();
+            temp_env.add_food_space(pos);
         }
+
+        // Fill in random spaces with creatures (no worries if they overwrite food)
+        for creature_num in 0..num_start_creatures {
+            // Create creature
+            let mut creature = CreatureV1::new(creature_num);
+
+            // Set few parameters of the new creature
+            let pos = temp_env.get_rand_blank_space();
+            creature.set_position(pos.x, pos.y);
+            creature.set_reproduction_age(REPRODUCTION_AGE);
+
+            // Add it to the board
+            temp_env.add_creature(creature);
+        }
+
+        // Fill random wall spaces
+        for _wall_num in 0..num_walls {
+            let pos = temp_env.get_rand_blank_space();
+            temp_env.add_wall_space(pos);
+        }
+
+        return temp_env;
+
     }
 
 
@@ -160,6 +157,30 @@ impl EnvironmentV1 {
     }
 
 
+    /// Audit the counters of each space type vs. the position matrix to make sure everything is in sync
+    fn update_space_counters(&mut self) {
+        let mut temp_food : usize = 0; 
+        let mut temp_walls : usize = 0; 
+        let mut temp_creatures : usize = 0; 
+        let mut temp_blank : usize = 0; 
+        for x in 0..self.env_x_size {
+            for y in 0..self.env_y_size {
+                match self.positions[x][y] {
+                    SpaceStates::BlankSpace => temp_blank += 1,
+                    SpaceStates::FoodSpace => temp_food += 1,
+                    SpaceStates::CreatureSpace(_id) => temp_creatures += 1,
+                    SpaceStates::WallSpace => temp_walls += 1,
+                }
+            }
+        }
+
+        self.num_blank = temp_blank;
+        self.num_creatures = temp_creatures;
+        self.num_walls = temp_walls;
+        self.num_food = temp_food;
+    }
+
+
 
     /// Advance one "day"!
     pub fn advance_step(&mut self) {
@@ -170,6 +191,9 @@ impl EnvironmentV1 {
             println!("Creatures: {}", self.creatures.len());
             println!("");
         }
+
+        // Audit the board on every step
+        self.update_space_counters();
 
         // Initialize the random number generator used in this function
         let mut rng = rand::thread_rng();
@@ -286,19 +310,20 @@ impl EnvironmentV1 {
         // Remove dead creatures from the environment
         self.remove_dead_creatures();
 
-        // Add new spawned creatures
+        // Add new spawned creatures in random locations
         for mut new_creature in temp_new_creatures {
-            let new_x_pos = rng.gen_range(0..self.env_x_size); //(new_creature.position.x + 1) % self.env_x_size;
-            let new_y_pos = rng.gen_range(0..self.env_y_size);// (new_creature.position.y + 1) % self.env_y_size;
-            // let new_y_pos = rng.gen_range(0..3) % self.env_y_size;
-            new_creature.set_position(new_x_pos, new_y_pos);
+            let pos = self.get_rand_blank_space();
+            new_creature.set_position(pos.x, pos.y);
             self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
             self.creatures.push(new_creature);
         }
 
         // Evaluate the vision of each of the creatures now that everything is updated
         self.update_creature_vision();
-        
+
+        // Add food pieces according to settings
+        self.add_new_food_pieces();
+
         // If proper debug level show the env after each step
         if DEBUG_LEVEL > 0 {
             self.show();
@@ -307,6 +332,55 @@ impl EnvironmentV1 {
         // Increment the time step counter
         self.time_step += 1;
 
+    }
+
+    /// Add random number of new food pieces to the board in random locations according to 
+    /// `avg_new_food_per_day` value.
+    fn add_new_food_pieces(&mut self) {
+        let mut rng = rand::thread_rng();
+
+        if self.avg_new_food_per_day < 1.0 {
+            // If the number of new food is less than 1, then decide whether to add
+            // a single food piece treating `avg_new_food_per_day` as a probability
+            if rng.gen::<f32>() < self.avg_new_food_per_day {
+                self.add_food_space(self.get_rand_blank_space());
+            }
+        } else {
+            // If avg the number of food pieces is greater than 1, then randomly sample from
+            // range where `avg_new_food_per_day` is the center of the distribution. Result
+            // will represent how many food pieces to add
+            let max_food = self.avg_new_food_per_day * 2.0;
+            let num_food = rng.gen_range(0.0..max_food).round() as usize;
+            for _ in 0..num_food {
+                self.add_food_space(self.get_rand_blank_space());
+            }
+        }
+    }
+
+    /// Add a single food space to the specified location
+    pub fn add_food_space(&mut self, position : CreaturePosition) {
+        if self.positions[position.x][position.y] != SpaceStates::BlankSpace {
+            panic!("Tried to add a food space to a non-blank space!");
+        }
+        self.positions[position.x][position.y] = SpaceStates::FoodSpace;
+    }
+
+    /// Add single creature to the environment at position specified by creature itself
+    pub fn add_creature(&mut self, new_creature : CreatureV1) {
+        if self.positions[new_creature.position.x][new_creature.position.y] != SpaceStates::BlankSpace {
+            panic!("Tried to add a creature to a non-blank space!");
+        }
+        self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
+        self.creatures.push(new_creature);
+        self.num_total_creatures += 1;
+    }
+
+    /// Add a wall space to the specified location
+    pub fn add_wall_space(&mut self, position : CreaturePosition) {
+        if self.positions[position.x][position.y] != SpaceStates::BlankSpace {
+            panic!("Tried to add a wall space to a non-blank space!");
+        }
+        self.positions[position.x][position.y] = SpaceStates::WallSpace;
     }
 
     /// Go through list of creatures and remove the ones that have died from the environment
@@ -332,6 +406,7 @@ impl EnvironmentV1 {
             for x in 0..self.creatures.len() {
                 if self.creatures[x].id == remove_id {
                     self.creatures.remove(x);
+                    self.num_creatures -= 1;
                     break;
                 }
             }
@@ -411,9 +486,44 @@ impl EnvironmentV1 {
                 }
             }
         }
+    }
 
 
+    /// Get a random blank spot on the board
+    fn get_rand_blank_space(&self) -> CreaturePosition {
+        let mut rng = rand::thread_rng();
+        let mut done : bool = false;
+        let mut found_x: usize = 0;
+        let mut found_y: usize = 0;
+        let mut attempts : usize = 0;
 
+        // Loop until we find a blank space
+        while !done {
+            let x = rng.gen_range(0..self.env_x_size);
+            let y = rng.gen_range(0..self.env_y_size);
+
+            // Only allow overwriting of blank spaces
+            match self.positions[x][y] {
+                SpaceStates::BlankSpace => {
+                    found_x = x;
+                    found_y = y;
+                    done = true;
+                },
+                _ => {
+                    attempts += 1;
+                },
+            }
+
+            // Check loop watchdog
+            if attempts > 10_000 {
+                panic!("Error! No blank spaces left in the simulation!");
+            }
+        }
+
+        return CreaturePosition {
+            x : found_x,
+            y: found_y,
+        }
     }
 
 
@@ -426,6 +536,8 @@ impl EnvironmentV1 {
         }
         return Err("Invalid creature id");
     }
+
+    
 
     /// Print status on a given creature
     pub fn print_creature(&self, id : usize) {

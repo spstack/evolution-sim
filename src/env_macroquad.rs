@@ -14,6 +14,9 @@ use macroquad::prelude::*;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
+// Window bar width
+const WINDOW_BAR_HEIGHT : f32 = 40.0;
+
 // Size of the board
 const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
@@ -64,14 +67,15 @@ impl EnvMacroquad {
     /// Get a new instance of the Macroquad environment
     pub fn new() -> EnvMacroquad {
         let temp_screen_size_x : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH;
+        let temp_screen_size_y : f32 = SCREEN_SIZE_Y + WINDOW_BAR_HEIGHT;
 
         // First set the screen size to default. Include the size of the stats panel
-        request_new_screen_size(temp_screen_size_x, SCREEN_SIZE_Y);
+        request_new_screen_size(temp_screen_size_x, temp_screen_size_y);
 
         return EnvMacroquad {
             params : SimParameters {
-                grid_x_size : SCREEN_SIZE_X / NUM_GRID_SQUARES_X as f32,
-                grid_y_size : SCREEN_SIZE_Y / NUM_GRID_SQUARES_Y as f32,
+                grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
+                grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
             },
             env : EnvironmentV1::new_rand(
                 NUM_GRID_SQUARES_X, // env_x_size
@@ -175,10 +179,12 @@ impl EnvMacroquad {
             CreatureOrientation::Right => draw_line(center_x, center_y, center_x + x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
         }
     }
+
     /// Draw a single food space on the screen
     fn draw_food_space(&self, x_pos : usize, y_pos : usize) {
         draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, GREEN);
     }
+
     /// Draw a wall space on the screen
     fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
         draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLACK);
