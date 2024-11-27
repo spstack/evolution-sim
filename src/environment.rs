@@ -14,7 +14,7 @@ pub const DEBUG_LEVEL : usize = 0;
 
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;   // How much energy each piece of food will give a creature
 pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 10; // Number of offspring that each creature will have upon each reproduction event
-pub const DEFAULT_MUTATION_PROB : f32 = 0.05;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
+pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
 
@@ -26,6 +26,12 @@ pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
 //===============================================================================
 // Environment V1 Declarations
 //===============================================================================
+
+/// Defines all possible error codes for the environment
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum EnvErrors {
+    EARLY_EXIT_ERR,     // Simulation could not run all steps requested because all creatures died
+}
 
 /// Enumeration that defines the possible states 
 #[derive(Copy, Clone, PartialEq)]
@@ -52,12 +58,12 @@ pub struct EnvironmentV1 {
     // Current state
     pub creatures : Vec<CreatureV1>,// Vector containing all creature instances
     pub positions : Vec<Vec<SpaceStates>>, // Contains the states of each space.
-    time_step : usize,              // Represents the current time step in the sim
-    num_food : usize,               // Number of current food pieces on the board
-    num_creatures : usize,          // Number of living creatures on the board
-    num_walls : usize,              // Number of wall spaces on the board
-    num_blank : usize,              // Number of blank spaces on the board
-    num_total_creatures : usize,    // Number of total creatures created throughout sim
+    pub time_step : usize,              // Represents the current time step in the sim
+    pub num_food : usize,               // Number of current food pieces on the board
+    pub num_creatures : usize,          // Number of living creatures on the board
+    pub num_walls : usize,              // Number of wall spaces on the board
+    pub num_blank : usize,              // Number of blank spaces on the board
+    pub num_total_creatures : usize,    // Number of total creatures created throughout sim
 }
 
 
@@ -121,6 +127,25 @@ impl EnvironmentV1 {
 
         return temp_env;
 
+    }
+
+
+    /// Main interface to run a certain number of simulation steps
+    pub fn run_n_steps(&mut self, num_steps : usize) -> Result<(), EnvErrors> {
+        for n in 0..num_steps {
+
+            // Run the step
+            self.advance_step();
+
+            // Check whether there's any creatures left
+            if self.num_creatures == 0 {
+                if DEBUG_LEVEL > 0 {
+                    println!("Stopping simulation after {} steps because there are no creatures left", n);
+                }
+                return Err(EnvErrors::EARLY_EXIT_ERR);
+            }
+        }
+        return Ok(());
     }
 
 

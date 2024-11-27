@@ -20,8 +20,8 @@ const WINDOW_BAR_HEIGHT : f32 = 40.0;
 // Size of the board
 const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
-const NUM_GRID_SQUARES_X : usize = 50;
-const NUM_GRID_SQUARES_Y : usize = 50;
+const NUM_GRID_SQUARES_X : usize = 80;
+const NUM_GRID_SQUARES_Y : usize = 80;
 
 // Size of panel
 const STATS_PANEL_WIDTH : f32 = 400.0;
@@ -29,9 +29,9 @@ const STATS_PANEL_WIDTH : f32 = 400.0;
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 50;
-const DEFAULT_START_FOOD : usize = 50;
-const DEFAULT_START_WALLS : usize = 50;
+const DEFAULT_START_CREATURES : usize = 300;
+const DEFAULT_START_FOOD : usize = 500;
+const DEFAULT_START_WALLS : usize = 100;
 
 //===============================================================================
 // DATA
@@ -130,6 +130,31 @@ impl EnvMacroquad {
         const HEADER_FONT_SIZE_PX : f32 = 14.0;
         const MAIN_FONT_SIZE_PX : f32 = 10.0;
         let mut cur_y_pos_px = self.stats_panel_y_pos + HEADER_FONT_SIZE_PX;
+
+        // = HIGH LEVEL SIMULATION STATS PANEL =
+        let sim_stat_hdr_str = "SIMULATION STATS";
+        draw_text(&sim_stat_hdr_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, BLACK);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+
+        let mut stat_txt = format!("{:22} {:<12}", "TIME STEP:", self.env.time_step);
+        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        stat_txt = format!("{:22} {:<12}", "TOTAL CREATURES:", self.env.num_total_creatures);
+        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        stat_txt = format!("{:22} {:<12}", "CURRENT CREATURES:", self.env.num_creatures);
+        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        stat_txt = format!("{:22} {:<12}", "NUM FOOD:", self.env.num_food);
+        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        stat_txt = format!("{:22} {:<12}", "NUM WALLS:", self.env.num_walls);
+        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+
+
+        // = INDIVIDUAL CREATURE DETAILS =
 
         // Write the header
         let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");

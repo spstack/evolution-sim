@@ -28,8 +28,15 @@ async fn main() {
     let mut last_update = get_time();
     let mut cur_time = get_time();
 
-    const MACROQUAD_FRAME_TIME_S : f64 = 0.2;    // Time between sim steps for macroquad in seconds
+    const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macroquad in seconds
 
+    // First run number of sim steps wanted to "train" the creatures
+    const NUM_INITIAL_STEPS : usize = 4000; 
+    println!("Running {} steps first before starting visualization...", NUM_INITIAL_STEPS);
+    env.env.run_n_steps(NUM_INITIAL_STEPS).unwrap();
+
+
+    // Start the visualization
     loop {
         // Update display every time through
         env.update_display();
