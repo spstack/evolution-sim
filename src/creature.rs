@@ -25,6 +25,7 @@ pub const DEFAULT_REPRODUCE_AGE : usize = 21;               // Default age at wh
 pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // Default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 
+
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
 
 const DEBUG_LEVEL : usize = 1;  // Debug print level (higher number = more detail)
@@ -72,6 +73,7 @@ pub enum CreatureOrientation {
     Left,
     Right,
 }
+pub const NUM_ORIENTATION_STATES : usize = 4;
 
 // This represents the state of a creatures vision in one direction
 #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
@@ -112,7 +114,7 @@ use crate::neural_net::NeuralNet;
 
 /// Version 1 of a simple creature. It contains all of the state information about a creature
 /// The environment that creates the creature should call ``
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CreatureV1 {
 
     /// Creatures brain represented as a neural network
@@ -185,17 +187,13 @@ impl CreatureV1 {
 
     /// Constructor to create a new creature from a provided parent (genes copied with optional mutations)
     pub fn new_offspring(id : usize, parent : &CreatureV1, mutation_prob : f32) -> CreatureV1 {
-        // let parent_dna = parent.brain.get_dna_copy();
-        // if DEBUG_LEVEL > 1 {
-        //     println!("Initializing offspring w/ dna {parent_dna:?}");
-        // }
 
         let mut temp_creature = CreatureV1 {
             brain : Brain::new_copy(&parent.brain, mutation_prob),
             id : id,
             is_alive : true,
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
-            orientation : CreatureOrientation::Up,
+            orientation : parent.orientation,
             energy : DEFAULT_ENERGY_LEVEL,
             vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0])},
             age : 0,
@@ -229,6 +227,11 @@ impl CreatureV1 {
     pub fn set_position(&mut self, x: usize, y: usize) {
         self.position.x = x;
         self.position.y = y;
+    }
+
+    /// Set the creatures orientation
+    pub fn set_orientation(&mut self, orientation : CreatureOrientation) {
+        self.orientation = orientation;
     }
 
     /// Eat a piece of food that gives it the specified amount of energy
@@ -395,7 +398,7 @@ impl CreatureV1 {
 
 
 /// Second version of a creature brain that uses more generic neural network
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Brain {
     // Underlying neural network
     net : NeuralNet<f32>,

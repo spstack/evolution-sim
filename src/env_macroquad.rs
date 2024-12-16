@@ -20,18 +20,21 @@ const WINDOW_BAR_HEIGHT : f32 = 40.0;
 // Size of the board
 const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
-const NUM_GRID_SQUARES_X : usize = 80;
-const NUM_GRID_SQUARES_Y : usize = 80;
-
-// Size of panel
-const STATS_PANEL_WIDTH : f32 = 400.0;
-
-const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
+const NUM_GRID_SQUARES_X : usize = 100;
+const NUM_GRID_SQUARES_Y : usize = 100;
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 300;
+const DEFAULT_START_CREATURES : usize = 1000;
 const DEFAULT_START_FOOD : usize = 500;
 const DEFAULT_START_WALLS : usize = 100;
+
+// Stat Panel params
+const STATS_PANEL_WIDTH : f32 = 400.0;
+const STATS_BACKGROUND_COLOR : Color = Color {r: 0.8, g: 0.8, b:0.8, a: 1.0};
+
+// Creature display params
+const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
+
 
 //===============================================================================
 // DATA

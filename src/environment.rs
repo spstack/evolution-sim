@@ -30,7 +30,7 @@ pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
 /// Defines all possible error codes for the environment
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum EnvErrors {
-    EARLY_EXIT_ERR,     // Simulation could not run all steps requested because all creatures died
+    EarlyExitErr,     // Simulation could not run all steps requested because all creatures died
 }
 
 /// Enumeration that defines the possible states 
@@ -72,6 +72,8 @@ impl EnvironmentV1 {
 
     /// Constructor for new environment instance that's randomly populated
     pub fn new_rand(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize, num_walls : usize) -> EnvironmentV1 {
+        let mut rng = rand::thread_rng();
+
         // Initialize all positions to be blank at first
         let temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
 
@@ -105,7 +107,7 @@ impl EnvironmentV1 {
             temp_env.add_food_space(pos);
         }
 
-        // Fill in random spaces with creatures (no worries if they overwrite food)
+        // Fill in random spaces with creatures
         for creature_num in 0..num_start_creatures {
             // Create creature
             let mut creature = CreatureV1::new(creature_num);
@@ -114,6 +116,17 @@ impl EnvironmentV1 {
             let pos = temp_env.get_rand_blank_space();
             creature.set_position(pos.x, pos.y);
             creature.set_reproduction_age(REPRODUCTION_AGE);
+
+            // Set random initial orientation
+            let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
+            let orientation = match orient {
+                0 => CreatureOrientation::Up,
+                1 => CreatureOrientation::Right,
+                2 => CreatureOrientation::Down,
+                3 => CreatureOrientation::Left,
+                _ => panic!("Invalid initial random orientation! Update the number of states"),
+            };
+            creature.set_orientation(orientation);
 
             // Add it to the board
             temp_env.add_creature(creature);
@@ -142,7 +155,7 @@ impl EnvironmentV1 {
                 if DEBUG_LEVEL > 0 {
                     println!("Stopping simulation after {} steps because there are no creatures left", n);
                 }
-                return Err(EnvErrors::EARLY_EXIT_ERR);
+                return Err(EnvErrors::EarlyExitErr);
             }
         }
         return Ok(());
@@ -440,14 +453,17 @@ impl EnvironmentV1 {
 
     /// Update what each of the creatures is currently "seeing"
     fn update_creature_vision(&mut self) {
-        for creature in &mut self.creatures {
+
+        // Check vision of all creatures
+        for c_idx in 0..self.creatures.len() {
+
             // Define variables for position we will be looking in
-            let mut xpos = creature.position.x;
-            let mut ypos = creature.position.y;
+            let mut xpos = self.creatures[c_idx].position.x;
+            let mut ypos = self.creatures[c_idx].position.y;
 
             for _step in 0..MAX_CREATURE_VIEW_DISTANCE {
                 // Update the position we're currently looking in by checking the direction creature is facing
-                match creature.orientation {
+                match self.creatures[c_idx].orientation {
                     CreatureOrientation::Up => {
                         if ypos == 0 {
                             break;
@@ -470,7 +486,9 @@ impl EnvironmentV1 {
                 }
 
                 // This is super ugly, but just takes the x and y distances and adds them
-                let distance : usize = ((xpos as i32 - creature.position.x as i32).abs() + (ypos as i32 - creature.position.y as i32).abs()) as usize;
+                let creature_x = self.creatures[c_idx].position.x;
+                let creature_y = self.creatures[c_idx].position.y;
+                let distance : usize = ((xpos as i32 - creature_x as i32).abs() + (ypos as i32 - creature_y as i32).abs()) as usize;
 
                 // Check what type space is there
                 match self.positions[xpos][ypos] {
@@ -483,7 +501,7 @@ impl EnvironmentV1 {
                             dist : distance,
                             color : CreatureColor::new_from_vec(FOOD_SPACE_COLOR)
                         };
-                        creature.set_vision(vis);
+                        self.creatures[c_idx].set_vision(vis);
                     },
 
                     // Wall space in view
@@ -493,20 +511,19 @@ impl EnvironmentV1 {
                             dist : distance,
                             color : CreatureColor::new_from_vec(WALL_SPACE_COLOR)
                         };
-                        creature.set_vision(vis);
+                        self.creatures[c_idx].set_vision(vis);
                     },
 
                     // Another creature is in view, update the color with the creature's color
                     SpaceStates::CreatureSpace(c_id) => {
-                        // let c_idx = self.get_creature_idx_from_id(c_id).unwrap();
-                        // let tgt_creature_color = self.creatures[c_idx].color.get_as_vec();
-                        let tgt_creature_color = [0,0,255]; // TODO: fix borrow checker error when above is uncommented
+                        let target_cidx = self.get_creature_idx_from_id(c_id).unwrap();
+                        let tgt_creature_color = self.creatures[target_cidx].color.get_as_vec();
                         let vis : CreatureVisionState = CreatureVisionState {
                             obj_in_view : true,
                             dist : distance,
                             color : CreatureColor::new_from_vec(tgt_creature_color)
                         };
-                        creature.set_vision(vis);
+                        self.creatures[target_cidx].set_vision(vis);
                     }
                 }
             }
