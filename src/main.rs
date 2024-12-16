@@ -26,7 +26,7 @@ async fn main() {
     const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macroquad in seconds
 
     // First run number of sim steps wanted to "train" the creatures
-    const NUM_INITIAL_STEPS : usize = 1000; 
+    const NUM_INITIAL_STEPS : usize = 0; 
     println!("Running {} steps first before starting visualization...", NUM_INITIAL_STEPS);
     env.env.run_n_steps(NUM_INITIAL_STEPS).unwrap();
 

@@ -24,7 +24,7 @@ const NUM_GRID_SQUARES_X : usize = 100;
 const NUM_GRID_SQUARES_Y : usize = 100;
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 1000;
+const DEFAULT_START_CREATURES : usize = 500;
 const DEFAULT_START_FOOD : usize = 500;
 const DEFAULT_START_WALLS : usize = 100;
 

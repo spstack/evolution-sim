@@ -12,12 +12,17 @@ use rand::Rng;
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
+// Env parameters
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;   // How much energy each piece of food will give a creature
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 10; // Number of offspring that each creature will have upon each reproduction event
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
-pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
 
+// Reproduction params
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 4; // Number of offspring that each creature will have upon each reproduction event
+pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
+pub const MAX_OFFSPRING_SPAWN_DIST : isize = 4;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
+
+// Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
 pub const FOOD_SPACE_COLOR : [u8; 3] = [255, 0, 0];     // color of food space
 pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
@@ -268,6 +273,8 @@ impl EnvironmentV1 {
                 CreatureActions::MoveUp => {
                     if next_position.y > 0 {
                         next_position.y -= 1;
+                    } else {
+                        next_position.y = self.env_y_size - 1;
                     }
                 },
 
@@ -275,12 +282,16 @@ impl EnvironmentV1 {
                     // Check if move would go beyond the bounds of this board
                     if next_position.y < self.positions.len() - 1 {
                         next_position.y += 1;
+                    } else {
+                        next_position.y = 0;
                     }
                 },
 
                 CreatureActions::MoveLeft => {
                     if next_position.x > 0 {
                         next_position.x -= 1;
+                    } else {
+                        next_position.x = self.env_x_size - 1;
                     }
                 },
 
@@ -288,6 +299,8 @@ impl EnvironmentV1 {
                     // Check if move would go beyond the bounds of this board
                     if next_position.x < self.positions[0].len() - 1 {
                         next_position.x += 1;
+                    } else {
+                        next_position.x = 0;
                     }
                 },
 
@@ -348,12 +361,20 @@ impl EnvironmentV1 {
         // Remove dead creatures from the environment
         self.remove_dead_creatures();
 
-        // Add new spawned creatures in random locations
+        // Add new spawned creatures in random locations around their parents
         for mut new_creature in temp_new_creatures {
-            let pos = self.get_rand_blank_space();
-            new_creature.set_position(pos.x, pos.y);
-            self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
-            self.creatures.push(new_creature);
+            let pos = self.get_blank_space_at_point(new_creature.position);
+            match pos {
+                Some(new_pos) => {
+                    new_creature.set_position(new_pos.x, new_pos.y);
+                    self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
+                    self.creatures.push(new_creature);
+                },
+                None => {
+                    // Just don't spawn the creature cause there's no space
+                    continue;
+                }
+            }
         }
 
         // Evaluate the vision of each of the creatures now that everything is updated
@@ -568,6 +589,63 @@ impl EnvironmentV1 {
         }
     }
 
+    /// Get a random blank spot centered at the specified position. This is used during creature reproduction
+    /// to determine where offspring should be placed
+    fn get_blank_space_at_point(&self, target_pos : CreaturePosition) -> Option<CreaturePosition> {
+        let mut rng = rand::thread_rng();
+        let mut done : bool = false;
+        let mut found_x: usize = 0;
+        let mut found_y: usize = 0;
+        let mut attempts : usize = 0;
+
+        // Loop until we find a blank space
+        while !done {
+            let x_diff : isize = rng.gen_range(-MAX_OFFSPRING_SPAWN_DIST..MAX_OFFSPRING_SPAWN_DIST);
+            let y_diff : isize = rng.gen_range(-MAX_OFFSPRING_SPAWN_DIST..MAX_OFFSPRING_SPAWN_DIST);
+
+            let mut x_isize = (target_pos.x as isize + x_diff);
+            let mut y_isize = (target_pos.y as isize + y_diff);
+
+            if x_isize < 0 {
+                x_isize = 0;
+            }
+            if y_isize < 0 {
+                y_isize = 0;
+            }
+            if x_isize >= self.env_x_size as isize {
+                x_isize = self.env_x_size as isize - 1;
+            }
+            if y_isize >= self.env_y_size as isize {
+                y_isize = self.env_y_size as isize - 1;
+            }
+
+            let x: usize = x_isize as usize;
+            let y: usize = y_isize as usize;
+
+            // Only allow overwriting of blank spaces
+            match self.positions[x][y] {
+                SpaceStates::BlankSpace => {
+                    found_x = x;
+                    found_y = y;
+                    done = true;
+                },
+                _ => {
+                    attempts += 1;
+                },
+            }
+
+            // If we make a number of attempts equal to number of possible spaces, then just
+            // give up early and say there are no spaces
+            if attempts > (MAX_OFFSPRING_SPAWN_DIST * MAX_OFFSPRING_SPAWN_DIST) as usize {
+                return None;
+            }
+        }
+
+        return Some(CreaturePosition {
+            x : found_x,
+            y : found_y,
+        });
+    }
 
     /// Get the index of the creature into the self.creatures array from creature ID
     pub fn get_creature_idx_from_id(&self, creature_id : usize) -> Result<usize, &str> {
