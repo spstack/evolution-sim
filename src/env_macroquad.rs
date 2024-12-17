@@ -33,6 +33,7 @@ const DEFAULT_START_WALLS : usize = 100;
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
 const PANEL_X_PADDING : f32 = 10.0;
+const PANEL_Y_PADDING : f32 = 10.0;
 const STATS_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
 const STATS_BACKGROUND_COLOR : Color = Color {r: 0.8, g: 0.8, b:0.8, a: 1.0};
 const MAX_CREATURES_STATS_TO_DISPLAY : usize = 25;
@@ -41,12 +42,16 @@ const MAX_CREATURES_STATS_TO_DISPLAY : usize = 25;
 const PARAM_PANEL_WIDTH : f32 = 400.0;
 const PARAM_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
 
+// Control panel params (sits below the main board)
+const CONTROL_PANEL_HEIGHT : f32 = 150.0 + PANEL_Y_PADDING;
+const CONTROL_PANEL_WIDTH : f32 = SCREEN_SIZE_X + PANEL_X_PADDING;
+
 // Creature display params
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 
 // Window Parameters
-const WINDOW_BAR_HEIGHT : f32 = 25.0;
-const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y;
+const WINDOW_BAR_HEIGHT : f32 = 0.0;
+const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y + CONTROL_PANEL_HEIGHT + PANEL_Y_PADDING;
 const WINDOW_WIDTH_PX : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH + PANEL_X_PADDING;
 
 
@@ -71,16 +76,28 @@ struct SimParameters {
 
 }
 
+/// Enum defining state of the simulation (stopped/running)
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum SimState {
+    RUNNING,
+    STOPPED,
+}
+
 
 /// Environment
 pub struct EnvMacroquad {
     params : SimParameters,     // Constant values that sim is initialized with
-    pub env : EnvironmentV1,        // Contains the whole environment
+    pub env : EnvironmentV1,    // Contains the whole environment
+
+    // Sim state
+    pub state : SimState,       // Current state of the sim (running/stopped)
 
     stats_panel_x_pos : f32,
     stats_panel_y_pos : f32,
     param_panel_x_pos : f32,
     param_panel_y_pos : f32,
+    control_panel_x_pos : f32,
+    control_panel_y_pos : f32,
 
     screen_width_pixels : f32,      // X Size of the environment in pixels
     screen_height_pixels : f32,     // Y size of the environment in pixels
@@ -96,8 +113,6 @@ impl EnvMacroquad {
 
     /// Get a new instance of the Macroquad environment
     pub fn new() -> EnvMacroquad {
-        // let temp_screen_size_x : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH;
-        // let temp_screen_size_y : f32 = SCREEN_SIZE_Y + WINDOW_BAR_HEIGHT;
 
         // First set the screen size to default. Include the size of the stats panel
         request_new_screen_size(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX);
@@ -123,11 +138,16 @@ impl EnvMacroquad {
                 DEFAULT_START_WALLS, // num_walls
             ),
 
+            // State
+            state : SimState::RUNNING,
+
             // Set position of stats panel
             stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
             stats_panel_y_pos : 0.0,
             param_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
             param_panel_y_pos : STATS_PANEL_HEIGHT,
+            control_panel_x_pos : 0.0,
+            control_panel_y_pos : SCREEN_SIZE_X + PANEL_Y_PADDING,
 
             // Set total size of the window for internal tracking
             screen_width_pixels : WINDOW_WIDTH_PX,
@@ -190,10 +210,11 @@ impl EnvMacroquad {
 
         // Define the content of the stats panel
         root_ui().window(hash!(), vec2(self.stats_panel_x_pos, self.stats_panel_y_pos), vec2(STATS_PANEL_WIDTH, STATS_PANEL_HEIGHT), |ui| {
-            ui.style_builder().color(Color {r: 200.0, g: 200.0, b: 0.0, a: 200.0}).build();
             ui.label(None, "SIMULATION STATISTICS"); 
             ui.label(None, ""); 
-            let mut stat_txt = format!("{:22} {:<12}", "TIME STEP:", self.env.time_step);
+            let mut stat_txt = format!("{:22} {:<12?}", "STATE:", self.state);
+            ui.label(None, &stat_txt);
+            stat_txt = format!("{:22} {:<12}", "TIME STEP:", self.env.time_step);
             ui.label(None, &stat_txt); 
             stat_txt = format!("{:22} {:<12}", "TOTAL CREATURES:", self.env.num_total_creatures);
             ui.label(None, &stat_txt); 
@@ -227,6 +248,23 @@ impl EnvMacroquad {
     }
 
 
+    /// Create/update the control panel in the UI
+    fn update_control_panel(&mut self) {
+
+        // Define the content of the control panel
+        root_ui().window(hash!(), vec2(self.control_panel_x_pos, self.control_panel_y_pos), vec2(CONTROL_PANEL_WIDTH, CONTROL_PANEL_HEIGHT), |ui| {
+            ui.label(None, "CONTROL PANEL"); 
+            ui.label(None, "");
+
+            if ui.button(None, "START/STOP") {
+                self.state = match self.state {
+                    SimState::RUNNING => SimState::STOPPED,
+                    SimState::STOPPED => SimState::RUNNING,
+                }
+            }
+        });
+    }
+
     /// Update the simulation parameters panel
     fn update_sim_param_panel(&mut self) {
 
@@ -257,6 +295,8 @@ impl EnvMacroquad {
         // Update the simulation start parameters panel
         self.update_sim_param_panel();
 
+        // Update the control panel
+        self.update_control_panel();
     }
 
     /// Draw a single creature square to the specified location on the screen

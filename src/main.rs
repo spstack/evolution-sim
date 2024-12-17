@@ -37,7 +37,7 @@ async fn main() {
         env.update_display();
         cur_time = get_time();
 
-        if cur_time - last_update > MACROQUAD_FRAME_TIME_S {
+        if (cur_time - last_update > MACROQUAD_FRAME_TIME_S) && (env.state == env_macroquad::SimState::RUNNING) {
             env.run_next_step();
             last_update = get_time();
         }
