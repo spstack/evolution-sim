@@ -7,21 +7,23 @@
 use crate::creature::*;
 use crate::environment::*;
 use macroquad::prelude::*;
-
+use macroquad::ui::{
+    hash, root_ui,Skin,
+    widgets::{self, Group},
+    Drag, Ui,
+};
 
 //===============================================================================
 // CONSTANTS
 //===============================================================================
 pub const DEBUG_LEVEL : usize = 0;
 
-// Window bar width
-const WINDOW_BAR_HEIGHT : f32 = 40.0;
-
 // Size of the board
 const SCREEN_SIZE_X : f32 = 800.0;
 const SCREEN_SIZE_Y : f32 = 800.0;
 const NUM_GRID_SQUARES_X : usize = 100;
 const NUM_GRID_SQUARES_Y : usize = 100;
+
 
 // Default environment parameters
 const DEFAULT_START_CREATURES : usize = 500;
@@ -30,20 +32,43 @@ const DEFAULT_START_WALLS : usize = 100;
 
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
+const PANEL_X_PADDING : f32 = 10.0;
+const STATS_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
 const STATS_BACKGROUND_COLOR : Color = Color {r: 0.8, g: 0.8, b:0.8, a: 1.0};
+const MAX_CREATURES_STATS_TO_DISPLAY : usize = 25;
+
+// Param panel params
+const PARAM_PANEL_WIDTH : f32 = 400.0;
+const PARAM_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
 
 // Creature display params
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
+
+// Window Parameters
+const WINDOW_BAR_HEIGHT : f32 = 25.0;
+const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y;
+const WINDOW_WIDTH_PX : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH + PANEL_X_PADDING;
 
 
 //===============================================================================
 // DATA
 //===============================================================================
 
-/// Constant parameters for this simulation that are passed into the main function
+/// Parameters for this simulation
 struct SimParameters {
     grid_x_size : f32,              // X size of a single grid square in pixels
     grid_y_size : f32,              // Y size of a single grid square in pixels
+
+    // String versions of the parameters for storing the text box versions
+    pub env_x_size : String,                    // X size of the sim in "spaces"
+    pub env_y_size : String,                    // Y size of the sim in "spaces"
+    pub num_start_creatures : String,           // Number of creatures to start the sim with
+    pub num_start_food : String,                // Number of starting food spaces
+    pub energy_per_food_piece : String,         // Number of energy units that will be given per food consumed 
+    pub max_offspring_per_reproduce : String,   // Maximum number of offspring that will be produced by one reproduction event
+    pub mutation_prob : String,                 // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
+    pub avg_new_food_per_day : String,          // Average number of new food pieces added to the environment per day
+
 }
 
 
@@ -54,6 +79,8 @@ pub struct EnvMacroquad {
 
     stats_panel_x_pos : f32,
     stats_panel_y_pos : f32,
+    param_panel_x_pos : f32,
+    param_panel_y_pos : f32,
 
     screen_width_pixels : f32,      // X Size of the environment in pixels
     screen_height_pixels : f32,     // Y size of the environment in pixels
@@ -69,16 +96,24 @@ impl EnvMacroquad {
 
     /// Get a new instance of the Macroquad environment
     pub fn new() -> EnvMacroquad {
-        let temp_screen_size_x : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH;
-        let temp_screen_size_y : f32 = SCREEN_SIZE_Y + WINDOW_BAR_HEIGHT;
+        // let temp_screen_size_x : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH;
+        // let temp_screen_size_y : f32 = SCREEN_SIZE_Y + WINDOW_BAR_HEIGHT;
 
         // First set the screen size to default. Include the size of the stats panel
-        request_new_screen_size(temp_screen_size_x, temp_screen_size_y);
+        request_new_screen_size(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX);
 
-        return EnvMacroquad {
+        let mut temp_env = EnvMacroquad {
             params : SimParameters {
                 grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
                 grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
+                env_x_size : String::new(),
+                env_y_size : String::new(),
+                num_start_creatures : String::new(),
+                num_start_food : String::new(),
+                energy_per_food_piece : String::new(),
+                max_offspring_per_reproduce : String::new(),
+                mutation_prob : String::new(),
+                avg_new_food_per_day : String::new(),
             },
             env : EnvironmentV1::new_rand(
                 NUM_GRID_SQUARES_X, // env_x_size
@@ -89,13 +124,20 @@ impl EnvMacroquad {
             ),
 
             // Set position of stats panel
-            stats_panel_x_pos : SCREEN_SIZE_X + 10.0,
+            stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
             stats_panel_y_pos : 0.0,
+            param_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
+            param_panel_y_pos : STATS_PANEL_HEIGHT,
 
             // Set total size of the window for internal tracking
-            screen_width_pixels : temp_screen_size_x,
-            screen_height_pixels : SCREEN_SIZE_Y,
-        }
+            screen_width_pixels : WINDOW_WIDTH_PX,
+            screen_height_pixels : WINDOW_HEIGHT_PX,
+        };
+
+        // Populate initial param strings with values from sim
+        temp_env.repopulate_parameter_strings();
+
+        return temp_env;
     }
 
     /// Run and display the next step of the simulation
@@ -129,52 +171,81 @@ impl EnvMacroquad {
     }
 
     /// Update the statistics panel
-    fn update_stats_panel(&self) {
+    fn update_stats_panel(&mut self) {
         const HEADER_FONT_SIZE_PX : f32 = 14.0;
         const MAIN_FONT_SIZE_PX : f32 = 10.0;
         let mut cur_y_pos_px = self.stats_panel_y_pos + HEADER_FONT_SIZE_PX;
 
-        // = HIGH LEVEL SIMULATION STATS PANEL =
-        let sim_stat_hdr_str = "SIMULATION STATS";
-        draw_text(&sim_stat_hdr_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, BLACK);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        // Define style of the stats panel first
+        let label_style = root_ui()
+            .style_builder()
+            .text_color(Color::from_rgba(0, 0,0, 255))
+            .font_size(14)
+            .build();
+        let stats_skin = Skin {
+            label_style : label_style,
+            ..root_ui().default_skin()
+        };
+        root_ui().push_skin(&stats_skin);
 
-        let mut stat_txt = format!("{:22} {:<12}", "TIME STEP:", self.env.time_step);
-        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
-        stat_txt = format!("{:22} {:<12}", "TOTAL CREATURES:", self.env.num_total_creatures);
-        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
-        stat_txt = format!("{:22} {:<12}", "CURRENT CREATURES:", self.env.num_creatures);
-        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
-        stat_txt = format!("{:22} {:<12}", "NUM FOOD:", self.env.num_food);
-        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
-        stat_txt = format!("{:22} {:<12}", "NUM WALLS:", self.env.num_walls);
-        draw_text(&stat_txt, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+        // Define the content of the stats panel
+        root_ui().window(hash!(), vec2(self.stats_panel_x_pos, self.stats_panel_y_pos), vec2(STATS_PANEL_WIDTH, STATS_PANEL_HEIGHT), |ui| {
+            ui.style_builder().color(Color {r: 200.0, g: 200.0, b: 0.0, a: 200.0}).build();
+            ui.label(None, "SIMULATION STATISTICS"); 
+            ui.label(None, ""); 
+            let mut stat_txt = format!("{:22} {:<12}", "TIME STEP:", self.env.time_step);
+            ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "TOTAL CREATURES:", self.env.num_total_creatures);
+            ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "CURRENT CREATURES:", self.env.num_creatures);
+            ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "NUM FOOD:", self.env.num_food);
+            ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "NUM WALLS:", self.env.num_walls);
+            ui.label(None, &stat_txt); 
 
+            ui.label(None, "\n"); 
+            ui.separator();
 
-        // = INDIVIDUAL CREATURE DETAILS =
+            let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
+            ui.label(None, &header_str);
 
-        // Write the header
-        let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
-        draw_text(&header_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, BLACK);
-        cur_y_pos_px += HEADER_FONT_SIZE_PX;
+            for creature_idx in 0..self.env.creatures.len() {
+                let creature = &self.env.creatures[creature_idx];
+                let creature_str = format!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
+                ui.label(None, &creature_str);
 
-        for creature_idx in 0..self.env.creatures.len() {
-            let creature = &self.env.creatures[creature_idx];
-            let creature_str = format!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
-            draw_text(&creature_str, self.stats_panel_x_pos, cur_y_pos_px, HEADER_FONT_SIZE_PX, DARKGRAY);
-            cur_y_pos_px += MAIN_FONT_SIZE_PX;
-        }
+                if creature_idx > MAX_CREATURES_STATS_TO_DISPLAY {
+                    break;
+                }
+            }
+        });
+
+        // Undo the UI skin, so it can be set by another panel
+        root_ui().pop_skin();
+
     }
-        
+
+
+    /// Update the simulation parameters panel
+    fn update_sim_param_panel(&mut self) {
+
+        root_ui().window(hash!(), vec2(self.param_panel_x_pos, self.param_panel_y_pos), vec2(PARAM_PANEL_WIDTH, PARAM_PANEL_HEIGHT), |ui| {
+                ui.label(None, "SIMULATION PARAMETERS");
+                ui.input_text(hash!(), "Env X Size", &mut self.params.env_x_size);
+                ui.input_text(hash!(), "Env Y Size", &mut self.params.env_y_size);
+                ui.input_text(hash!(), "Num Start Creatures", &mut self.params.num_start_creatures);
+                ui.input_text(hash!(), "Num Start Food", &mut self.params.num_start_food);
+                ui.input_text(hash!(), "Energy per Food", &mut self.params.energy_per_food_piece);
+                ui.input_text(hash!(), "Max offspring per Reproduce", &mut self.params.max_offspring_per_reproduce);
+                ui.input_text(hash!(), "Mutation Probability", &mut self.params.mutation_prob);
+                ui.input_text(hash!(), "Avg New Food per Step", &mut self.params.avg_new_food_per_day);
+            });
+    }
+
 
     /// Update the display
-    pub fn update_display(&self) {
+    pub fn update_display(&mut self) {
         clear_background(GRAY);
 
         // Update the main board
@@ -182,6 +253,9 @@ impl EnvMacroquad {
 
         // Update statistics on the side
         self.update_stats_panel(); 
+
+        // Update the simulation start parameters panel
+        self.update_sim_param_panel();
 
     }
 
@@ -218,6 +292,18 @@ impl EnvMacroquad {
         draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLACK);
     }
 
+    /// Update the temporary parameter strings that param panel is populated from with the
+    /// actual values from the environment
+    fn repopulate_parameter_strings(&mut self) {
+        self.params.env_x_size = format!("{}", self.env.env_x_size); 
+        self.params.env_y_size = format!("{}", self.env.env_y_size); 
+        self.params.num_start_creatures = format!("{}", self.env.num_start_creatures); 
+        self.params.num_start_food = format!("{}", self.env.num_start_food); 
+        self.params.energy_per_food_piece = format!("{}", self.env.energy_per_food_piece); 
+        self.params.max_offspring_per_reproduce = format!("{}", self.env.max_offspring_per_reproduce); 
+        self.params.mutation_prob = format!("{}", self.env.mutation_prob); 
+        self.params.avg_new_food_per_day = format!("{}", self.env.avg_new_food_per_day); 
+    }
 
 }
 

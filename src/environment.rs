@@ -53,12 +53,12 @@ pub struct EnvironmentV1 {
     // Parameters
     pub env_x_size : usize,                 // X size of the sim in "spaces"
     pub env_y_size : usize,                 // Y size of the sim in "spaces"
-    num_start_creatures : usize,            // Number of creatures to start the sim with
-    num_start_food : usize,                 // Number of starting food spaces
-    energy_per_food_piece : usize,          // Number of energy units that will be given per food consumed 
-    max_offspring_per_reproduce : usize,    // Maximum number of offspring that will be produced by one reproduction event
-    mutation_prob : f32,                    // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
-    avg_new_food_per_day : f32,             // Average number of new food pieces added to the environment per day
+    pub num_start_creatures : usize,        // Number of creatures to start the sim with
+    pub num_start_food : usize,             // Number of starting food spaces
+    pub energy_per_food_piece : usize,      // Number of energy units that will be given per food consumed 
+    pub max_offspring_per_reproduce : usize,// Maximum number of offspring that will be produced by one reproduction event
+    pub mutation_prob : f32,                // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
+    pub avg_new_food_per_day : f32,         // Average number of new food pieces added to the environment per day
 
     // Current state
     pub creatures : Vec<CreatureV1>,// Vector containing all creature instances
