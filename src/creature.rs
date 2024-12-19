@@ -413,7 +413,7 @@ pub struct Brain {
 // Define the number and size of internal layers in the brain neural net
 // (input/output will be overwritten by the constructor)
 const PLACEHOLDER_NUM_NODES : usize = 0;
-const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 16, 16, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 16 neurons each. First/Last layer sizes will be specified by constructor
+const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 8, 8, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
 const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -10.0;  // Min initial value that a node will take
 const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 10.0;   // Max initial value that a node will take 
 

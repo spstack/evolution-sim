@@ -20,37 +20,13 @@ use macroquad::prelude::*;
 #[macroquad::main("Evolution Sim!")]
 async fn main() {
     let mut env = env_macroquad::EnvMacroquad::new();
-    let mut last_update = get_time();
-    let mut cur_time = get_time();
-
-    const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macroquad in seconds
-
-    // First run number of sim steps wanted to "train" the creatures
-    const NUM_INITIAL_STEPS : usize = 0; 
-    println!("Running {} steps first before starting visualization...", NUM_INITIAL_STEPS);
-    env.env.run_n_steps(NUM_INITIAL_STEPS).unwrap();
-
 
     // Start the visualization
     loop {
-        // Update display every time through
-        env.update_display();
-        cur_time = get_time();
-
-        if (cur_time - last_update > MACROQUAD_FRAME_TIME_S) && (env.state == env_macroquad::SimState::RUNNING) {
-            env.run_next_step();
-            last_update = get_time();
-        }
-
+        env.main_loop();
         next_frame().await
     }
-
 }
-
-/// main functions for test math entry
-// fn main() {
-//     test_linalg();
-// }
 
 /// Main function for command line sim visualization
 // fn main() {

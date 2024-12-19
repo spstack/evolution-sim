@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 /** ===============================================================================
  * File: env_piston.rs
  * Author: Scott Stack
@@ -43,7 +45,7 @@ const PARAM_PANEL_WIDTH : f32 = 400.0;
 const PARAM_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
 
 // Control panel params (sits below the main board)
-const CONTROL_PANEL_HEIGHT : f32 = 150.0 + PANEL_Y_PADDING;
+const CONTROL_PANEL_HEIGHT : f32 = 125.0 + PANEL_Y_PADDING;
 const CONTROL_PANEL_WIDTH : f32 = SCREEN_SIZE_X + PANEL_X_PADDING;
 
 // Creature display params
@@ -53,6 +55,9 @@ const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 const WINDOW_BAR_HEIGHT : f32 = 0.0;
 const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y + CONTROL_PANEL_HEIGHT + PANEL_Y_PADDING;
 const WINDOW_WIDTH_PX : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH + PANEL_X_PADDING;
+
+// Sim defaults
+const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macroquad in seconds
 
 
 //===============================================================================
@@ -73,7 +78,6 @@ struct SimParameters {
     pub max_offspring_per_reproduce : String,   // Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : String,                 // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
     pub avg_new_food_per_day : String,          // Average number of new food pieces added to the environment per day
-
 }
 
 /// Enum defining state of the simulation (stopped/running)
@@ -81,6 +85,7 @@ struct SimParameters {
 pub enum SimState {
     RUNNING,
     STOPPED,
+    FASTFORWARD,    // Fast-forwarding to a target step in the simulation
 }
 
 
@@ -91,7 +96,11 @@ pub struct EnvMacroquad {
 
     // Sim state
     pub state : SimState,       // Current state of the sim (running/stopped)
+    last_sim_update : f64,      // Time of last simulation update used when running to determine whether we should update
+    step_to_jump_to : usize,    // Which step in the simulation we should jump to (if state is FASTFORWARD)
+    step_to_jump_to_str : String, // String version of `step_to_jump_to` variable that holds
 
+    // Layout parameters
     stats_panel_x_pos : f32,
     stats_panel_y_pos : f32,
     param_panel_x_pos : f32,
@@ -140,6 +149,9 @@ impl EnvMacroquad {
 
             // State
             state : SimState::RUNNING,
+            last_sim_update : get_time(),
+            step_to_jump_to : 0,
+            step_to_jump_to_str : String::new(),
 
             // Set position of stats panel
             stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
@@ -253,6 +265,18 @@ impl EnvMacroquad {
 
         // Define the content of the control panel
         root_ui().window(hash!(), vec2(self.control_panel_x_pos, self.control_panel_y_pos), vec2(CONTROL_PANEL_WIDTH, CONTROL_PANEL_HEIGHT), |ui| {
+            let temp_skin = Skin {
+                label_style : ui.style_builder().font_size(16).build(),
+                button_style : ui.style_builder()
+                    .color(Color {r: 0.5, g: 0.5, b: 0.5, a: 1.0})
+                    .color_hovered(Color {r: 0.7, g: 0.7, b: 0.7, a: 1.0})
+                    .background_margin(RectOffset::new(37.0, 37.0, 5.0, 5.0))
+                    .font_size(16)
+                    .build(),
+                ..ui.default_skin()
+            };
+            ui.push_skin(&temp_skin);
+
             ui.label(None, "CONTROL PANEL"); 
             ui.label(None, "");
 
@@ -260,8 +284,29 @@ impl EnvMacroquad {
                 self.state = match self.state {
                     SimState::RUNNING => SimState::STOPPED,
                     SimState::STOPPED => SimState::RUNNING,
+                    SimState::FASTFORWARD => SimState::STOPPED,
                 }
             }
+
+            // Jump to a particular step button
+            ui.same_line(0.0);
+            if ui.button(None, "JUMP TO STEP") {
+                // If target step is reasonable, then enter fast forward mode
+                if self.step_to_jump_to > self.env.time_step && self.step_to_jump_to > 0 && self.step_to_jump_to < 1000000 {
+                    self.state = SimState::FASTFORWARD;
+                }
+            }
+
+            // Text box that gets step to jump to
+            ui.same_line(0.0);
+            ui.input_text(hash!(), "Step to Jump To", &mut self.step_to_jump_to_str);
+            let res = self.step_to_jump_to_str.parse::<usize>();
+            match res {
+                Err(_e) => self.step_to_jump_to = 0,
+                Ok(step_val) => self.step_to_jump_to = step_val,
+            }
+
+            ui.pop_skin();
         });
     }
 
@@ -343,6 +388,72 @@ impl EnvMacroquad {
         self.params.max_offspring_per_reproduce = format!("{}", self.env.max_offspring_per_reproduce); 
         self.params.mutation_prob = format!("{}", self.env.mutation_prob); 
         self.params.avg_new_food_per_day = format!("{}", self.env.avg_new_food_per_day); 
+    }
+
+
+    /// Update the display for fast forward mode
+    /// basically just update the popup and run the simulation
+    fn update_ff_mode(&mut self) {
+        const NUM_STEPS_PER_CALL : usize = 20;
+
+        // Run several steps
+        let steps_to_go = self.step_to_jump_to - self.env.time_step;
+        let res : Result<(), EnvErrors>;
+        if (steps_to_go >= NUM_STEPS_PER_CALL) {
+            res = self.env.run_n_steps(NUM_STEPS_PER_CALL);
+        } else {
+            res = self.env.run_n_steps(steps_to_go);
+        }
+
+        // If we couldn't run the sim, just stop
+        match res {
+            Err(e) => self.state = SimState::STOPPED,
+            Ok(_) => (),
+        }
+
+        // Check for done condition
+        if self.env.time_step >= self.step_to_jump_to {
+            self.state = SimState::STOPPED;
+        }
+
+        // Update the popup
+        root_ui().popup(hash!(), vec2(SCREEN_SIZE_X, SCREEN_SIZE_Y), |ui| {
+            // Style the popup
+            let popup_skin = Skin {
+                label_style : ui.style_builder()
+                    .text_color(WHITE)
+                    .font_size(30)
+                    .build(),
+                ..ui.default_skin()
+            };
+
+            ui.push_skin(&popup_skin);
+            ui.label(vec2(SCREEN_SIZE_X / 3.0, SCREEN_SIZE_Y / 3.0), &format!("Running step {} / {}", self.env.time_step, self.step_to_jump_to));
+            ui.pop_skin();
+        });
+    }
+
+    /// Call this every loop through the main async function
+    pub fn main_loop(&mut self) {
+        let mut cur_time = get_time();
+
+        // If we're in fast forward mode, then simply run through this as fast as possible without updating display
+        if self.state == SimState::FASTFORWARD {
+            self.update_ff_mode();
+        }
+
+        // Update display every time through
+        self.update_display();
+
+        // Update current time
+        cur_time = get_time();
+
+        // Decide whether we should run the next sim step
+        if (self.state == SimState::RUNNING) && (cur_time - self.last_sim_update > MACROQUAD_FRAME_TIME_S) {
+            self.run_next_step();
+            self.last_sim_update = get_time();
+        }
+
     }
 
 }
