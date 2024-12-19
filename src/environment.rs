@@ -5,6 +5,7 @@
  * Description: Implements environment features that the creature inhabits
  * ===============================================================================*/
 use crate::creature::*;
+use serde::{Deserialize, Serialize};
 use rand::Rng;
 
 //===============================================================================
@@ -24,8 +25,8 @@ pub const MAX_OFFSPRING_SPAWN_DIST : isize = 4;         // Max distance (in spac
 
 // Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
-pub const FOOD_SPACE_COLOR : [u8; 3] = [255, 0, 0];     // color of food space
-pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
+pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];     // color of food space (orange-ish)
+pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space (black)
 
 
 //===============================================================================
@@ -33,13 +34,13 @@ pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space
 //===============================================================================
 
 /// Defines all possible error codes for the environment
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum EnvErrors {
     EarlyExitErr,     // Simulation could not run all steps requested because all creatures died
 }
 
 /// Enumeration that defines the possible states 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SpaceStates {
     BlankSpace,                 // Space is blank
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
@@ -49,6 +50,7 @@ pub enum SpaceStates {
 
 
 /// Structure representing a very simple 2-D environment
+#[derive(Serialize, Deserialize, Clone)]
 pub struct EnvironmentV1 {
     // Parameters
     pub env_x_size : usize,                 // X size of the sim in "spaces"
@@ -147,6 +149,11 @@ impl EnvironmentV1 {
 
     }
 
+    /// Convert this environment to JSON representation for saving/loading
+    pub fn to_json(&self) -> String {
+        let json_string = serde_json::to_string_pretty(&self).unwrap();
+        return json_string;
+    }
 
     /// Main interface to run a certain number of simulation steps
     pub fn run_n_steps(&mut self, num_steps : usize) -> Result<(), EnvErrors> {

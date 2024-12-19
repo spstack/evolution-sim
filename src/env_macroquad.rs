@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::num::ParseIntError;
 
 /** ===============================================================================
@@ -7,7 +8,9 @@ use std::num::ParseIntError;
  * Description: Implements graphical 2D environment using `macroquad` graphics lib
  * ===============================================================================*/
 use crate::creature::*;
+use crate::environment;
 use crate::environment::*;
+use std::fs::File;
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,Skin,
@@ -111,6 +114,9 @@ pub struct EnvMacroquad {
     screen_width_pixels : f32,      // X Size of the environment in pixels
     screen_height_pixels : f32,     // Y size of the environment in pixels
 
+    // Assets
+    background_texture : Texture2D, // Background image texture
+
 }
 
 
@@ -164,10 +170,14 @@ impl EnvMacroquad {
             // Set total size of the window for internal tracking
             screen_width_pixels : WINDOW_WIDTH_PX,
             screen_height_pixels : WINDOW_HEIGHT_PX,
+
+            // background_image : Image::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)).unwrap(),
+            background_texture : Texture2D::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)),
         };
 
         // Populate initial param strings with values from sim
         temp_env.repopulate_parameter_strings();
+
 
         return temp_env;
     }
@@ -182,8 +192,17 @@ impl EnvMacroquad {
         }
     }
 
+    /// Save the 
+    fn save_environment(&self, filename : String) {
+        let mut json_file = File::create(filename).unwrap();
+        json_file.write(self.env.to_json().as_bytes()).expect("Error writing environment to file!");
+    }
+
     /// Update the simulation env board
     fn update_sim_display(&self) {
+
+        // Draw background
+        draw_texture(&self.background_texture, 0.0, 0.0, WHITE);
 
         // For each simulation space on the board, update with proper piece
         for x in 0..self.env.env_x_size {
@@ -298,12 +317,16 @@ impl EnvMacroquad {
             }
 
             // Text box that gets step to jump to
-            ui.same_line(0.0);
-            ui.input_text(hash!(), "Step to Jump To", &mut self.step_to_jump_to_str);
+            ui.input_text(hash!(), "Step to Jump to", &mut self.step_to_jump_to_str);
             let res = self.step_to_jump_to_str.parse::<usize>();
             match res {
                 Err(_e) => self.step_to_jump_to = 0,
                 Ok(step_val) => self.step_to_jump_to = step_val,
+            }
+
+            // Button to save the current environment as a json file
+            if ui.button(None, "SAVE ENVIRONMENT") {
+                self.save_environment("data/temp_env.json".to_string());
             }
 
             ui.pop_skin();
@@ -369,7 +392,8 @@ impl EnvMacroquad {
 
     /// Draw a single food space on the screen
     fn draw_food_space(&self, x_pos : usize, y_pos : usize) {
-        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, GREEN);
+        let food_color = Color {r: (FOOD_SPACE_COLOR[0] as f32) / 255.0, g: (FOOD_SPACE_COLOR[1] as f32) / 255.0, b : (FOOD_SPACE_COLOR[2] as f32) / 255.0 , a: 1.0};
+        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, food_color);
     }
 
     /// Draw a wall space on the screen

@@ -28,7 +28,7 @@ pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; /
 
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
 
-const DEBUG_LEVEL : usize = 1;  // Debug print level (higher number = more detail)
+const DEBUG_LEVEL : usize = 0;  // Debug print level (higher number = more detail)
 
 
 /// Defines the possible actions that a creature of any type can take
