@@ -29,9 +29,9 @@ const NUM_GRID_SQUARES_Y : usize = 100;
 
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 500;
+const DEFAULT_START_CREATURES : usize = 250;
 const DEFAULT_START_FOOD : usize = 500;
-const DEFAULT_START_WALLS : usize = 100;
+const DEFAULT_START_WALLS : usize = 250;
 
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
@@ -495,7 +495,7 @@ impl EnvMacroquad {
     /// Update the display for fast forward mode
     /// basically just update the popup and run the simulation
     fn update_ff_mode(&mut self) {
-        const NUM_STEPS_PER_CALL : usize = 20;
+        const NUM_STEPS_PER_CALL : usize = 100;
 
         // Run several steps
         let steps_to_go = self.step_to_jump_to - self.env.time_step;

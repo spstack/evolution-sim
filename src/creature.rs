@@ -21,9 +21,12 @@ pub const DEFAULT_ENERGY_LEVEL : usize = 20;
 pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 200;
 
-pub const DEFAULT_REPRODUCE_AGE : usize = 21;               // Default age at which creature will reproduce
+pub const DEFAULT_REPRODUCE_AGE : usize = 22;               // Default age at which creature will reproduce
 pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // Default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
+pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = 20;       // Default amount of energy it takes to reproduce
+pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
+                                                                            // Intent is that this should be greater than the starting energy, so that creatures only reproduce when they find food
 
 
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
@@ -44,6 +47,7 @@ pub enum CreatureActions {
     Reproduce,
     // Kill, //....soon
 }
+const ENABLED_CREATURE_ACTIONS : [CreatureActions; 8] = [Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW, Reproduce];
 
 /// Defines input neuron types to a creature. Each one of these has to directly translate into
 /// a single neuron input in the "brain" of the creature. I.e. the number of entries here
@@ -57,7 +61,9 @@ pub enum CreatureInputs {
     VisionColorRed,     // Red component of the color of the object the creature can see [0, 255]
     VisionColorGreen,   // Green component of the color of the object the creature can see [0, 255]
     VisionColorBlue,    // Blue component of the color of the object the creature can see [0, 255]
+    // TODO: Add orientation
 }
+const ENABLED_CREATURE_INPUTS : [CreatureInputs; 6] = [Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue];
 
 #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub struct CreaturePosition {
@@ -112,10 +118,26 @@ use CreatureInputs::*;
 
 use crate::neural_net::NeuralNet;
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CreatureParams {
+    pub reproduce_energy_cost : usize,
+    pub starting_energy : usize,
+}
+impl CreatureParams {
+    pub fn new() -> CreatureParams {
+        return CreatureParams {
+            reproduce_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
+            starting_energy : DEFAULT_ENERGY_LEVEL,
+        }
+    }
+}
+
 /// Version 1 of a simple creature. It contains all of the state information about a creature
 /// The environment that creates the creature should call ``
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreatureV1 {
+    /// Input parameters to the creature
+    pub params : CreatureParams,
 
     /// Creatures brain represented as a neural network
     pub brain : Brain,
@@ -162,11 +184,12 @@ impl CreatureV1 {
     // ============= CONSTRUCTORS ================
 
     /// Constructor returns creature instance w/ default values
-    pub fn new(id : usize) -> CreatureV1 {
-        let input_neuron_types = vec![Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue];
-        let output_neuron_types = vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW];
+    pub fn new(id : usize, inparams : &CreatureParams) -> CreatureV1 {
+        let input_neuron_types = ENABLED_CREATURE_INPUTS.to_vec();
+        let output_neuron_types = ENABLED_CREATURE_ACTIONS.to_vec();
 
         let temp_creature = CreatureV1 {
+            params : inparams.clone(),
             brain : Brain::new(&input_neuron_types,&output_neuron_types),
             id : id,
             is_alive : true,
@@ -189,19 +212,20 @@ impl CreatureV1 {
     pub fn new_offspring(id : usize, parent : &CreatureV1, mutation_prob : f32) -> CreatureV1 {
 
         let mut temp_creature = CreatureV1 {
+            params : parent.params.clone(),
             brain : Brain::new_copy(&parent.brain, mutation_prob),
             id : id,
             is_alive : true,
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
             orientation : parent.orientation,
-            energy : DEFAULT_ENERGY_LEVEL,
+            energy : parent.params.starting_energy,
             vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0])},
             age : 0,
             last_action : CreatureActions::Stay,
-            color : CreatureColor::new_from_vec(DEFAULT_CREATURE_COLOR),
+            color : parent.color.clone(),
             reproduction_age : DEFAULT_REPRODUCE_AGE,
-            input_neuron_types : vec![Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue],
-            output_neuron_types : vec![Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW],
+            input_neuron_types : parent.input_neuron_types.clone(),
+            output_neuron_types : parent.output_neuron_types.clone(),
         };
 
         return temp_creature;
@@ -322,15 +346,16 @@ impl CreatureV1 {
             self.age += 1;
         }
 
-        // If we get to a certain age, then we've survived long enough! Reproduce
-        if (self.age % self.reproduction_age) == 0 {
-            self.last_action = CreatureActions::Reproduce;
-            return CreatureActions::Reproduce;
+        // Before we even do any action eval, check to see whether creature should reproduce
+        if self.energy > DEFAULT_MIN_REPRODUCE_ENERGY {
+            self.energy -= self.params.reproduce_energy_cost;
+            self.last_action = Reproduce;
+            return Reproduce;
         }
 
         // Otherwise, evaluate the brain network based on the current state of the input neurons
         // To check what our next action will be
-        let action = self.brain.get_next_action();
+        let mut action = self.brain.get_next_action();
 
         // Get the value of the action to be taken
         // let action = self.brain.get_current_action();
@@ -346,6 +371,17 @@ impl CreatureV1 {
         // is rotation which we can simply handle here. Nothing will happen if the action
         // is not a rotation
         self.apply_rotation(action);
+
+        // If creature decides to reproduce, subtract reproduction energy cost
+        if action == Reproduce {
+            if self.energy >= self.params.reproduce_energy_cost {
+                self.energy -= self.params.reproduce_energy_cost;
+            } else {
+                // Creature is now dead
+                self.energy = 0;
+                action = Stay;
+            }
+        }
 
         return action; 
     }
@@ -413,7 +449,7 @@ pub struct Brain {
 // Define the number and size of internal layers in the brain neural net
 // (input/output will be overwritten by the constructor)
 const PLACEHOLDER_NUM_NODES : usize = 0;
-const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 8, 8, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
+const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 4, 4, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
 const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -10.0;  // Min initial value that a node will take
 const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 10.0;   // Max initial value that a node will take 
 

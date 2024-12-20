@@ -19,13 +19,13 @@ pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability t
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 4; // Number of offspring that each creature will have upon each reproduction event
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 1; // Number of offspring that each creature will have upon each reproduction event
 pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
 pub const MAX_OFFSPRING_SPAWN_DIST : isize = 4;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
-pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];     // color of food space (orange-ish)
+pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];     // color of food space (green)
 pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space (black)
 
 
@@ -61,6 +61,9 @@ pub struct EnvironmentParams {
     pub max_offspring_per_reproduce : usize,// Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : f32,                // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
     pub avg_new_food_per_day : f32,         // Average number of new food pieces added to the environment per day
+
+    pub creature_repro_energy_cost : usize, // Energy cost for creature to reproduce
+    pub creature_starting_energy : usize,   // Starting energy for each new creature
 }
 impl EnvironmentParams {
     /// Return a default version of the parameters
@@ -75,6 +78,8 @@ impl EnvironmentParams {
             max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
             mutation_prob : DEFAULT_MUTATION_PROB,
             avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP, 
+            creature_repro_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
+            creature_starting_energy : DEFAULT_ENERGY_LEVEL,
         }
     }
 }
@@ -113,17 +118,7 @@ impl EnvironmentV1 {
 
         // Create temporary environment, transferring ownership of vectors
         let mut temp_env = EnvironmentV1 {
-            params: EnvironmentParams {
-                env_x_size : in_params.env_x_size,
-                env_y_size : in_params.env_y_size,
-                num_start_creatures : in_params.num_start_creatures,  
-                num_start_food : in_params.num_start_food,
-                num_start_walls : in_params.num_start_walls,
-                energy_per_food_piece : in_params.energy_per_food_piece,
-                max_offspring_per_reproduce : in_params.max_offspring_per_reproduce,
-                mutation_prob : in_params.mutation_prob,
-                avg_new_food_per_day : in_params.avg_new_food_per_day,
-            },
+            params: in_params.clone(),
             creatures : temp_creature_vec,
             positions : temp_positions,
             time_step : 0,
@@ -143,7 +138,7 @@ impl EnvironmentV1 {
         // Fill in random spaces with creatures
         for creature_num in 0..in_params.num_start_creatures {
             // Create creature
-            let mut creature = CreatureV1::new(creature_num);
+            let mut creature = CreatureV1::new(creature_num, &CreatureParams::new());
 
             // Set few parameters of the new creature
             let pos = temp_env.get_rand_blank_space();
@@ -485,8 +480,8 @@ impl EnvironmentV1 {
             if creature.is_dead() {
                 let pos = creature.position.clone();
   
-                // Update the position map to remove this creature
-                self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
+                // Update the position map to remove this creature and make it's body food
+                self.positions[pos.x][pos.y] = SpaceStates::FoodSpace;
 
                 // Mark this dude for removal
                 to_remove.push(creature.id);
