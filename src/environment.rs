@@ -549,7 +549,7 @@ impl EnvironmentV1 {
                             dist : distance,
                             color : CreatureColor::new_from_vec(tgt_creature_color)
                         };
-                        self.creatures[target_cidx].set_vision(vis);
+                        self.creatures[c_idx].set_vision(vis);
                     }
                 }
             }
