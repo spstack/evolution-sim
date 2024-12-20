@@ -46,6 +46,7 @@ pub enum SpaceStates {
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
     FoodSpace,                  // Space has a food in it
     WallSpace,                  // Space that contains a wall
+    FightSpace,                 // Indicator that a creature was killed in this space (temporary)
 }
 
 
@@ -208,6 +209,7 @@ impl EnvironmentV1 {
                     SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
                     SpaceStates::FoodSpace => print!(" # "),
                     SpaceStates::WallSpace => print!("|-|"),
+                    SpaceStates::FightSpace => print!(" x "),
                 }
             }
             print!("|");
@@ -241,6 +243,7 @@ impl EnvironmentV1 {
                     SpaceStates::FoodSpace => temp_food += 1,
                     SpaceStates::CreatureSpace(_id) => temp_creatures += 1,
                     SpaceStates::WallSpace => temp_walls += 1,
+                    SpaceStates::FightSpace => temp_blank += 1,
                 }
             }
         }
@@ -282,30 +285,52 @@ impl EnvironmentV1 {
             let action : CreatureActions = self.creatures[creature_idx].perform_next_action();
 
             // Create a reference to the creature now that we've done the mutable work (perform next_action)
-            let creature = &self.creatures[creature_idx];
+            let creature_copy = self.creatures[creature_idx].clone();
 
             // if the creature is dead, don't bother handling the next action. Will be removed
-            if creature.is_dead() {
+            if creature_copy.is_dead() {
                 if DEBUG_LEVEL > 2 {
-                    println!("Creature {} is ded... :( | age = {}", creature.id, creature.age);
+                    println!("Creature {} is ded... :( | age = {}", creature_copy.id, creature_copy.age);
                 }
                 continue;
             }
 
             if DEBUG_LEVEL > 1 {
-                println!("Next Action for creature {} is {:?} | age = {} | energy = {}", creature.id, action, creature.age, creature.energy);
+                println!("Next Action for creature {} is {:?} | age = {} | energy = {}", creature_copy.id, action, creature_copy.age, creature_copy.energy);
             }
 
-            let mut next_position = creature.position.clone();
+            let mut next_position = creature_copy.position.clone();
 
             match action {
+
+                // Handle Kill
+                CreatureActions::Kill => {
+                    if creature_copy.vision_state.obj_in_view && creature_copy.vision_state.dist == 1 {
+                        match creature_copy.vision_state.space_type {
+                            SpaceStates::CreatureSpace(victim_cid) => {
+                                let victim_idx = self.get_creature_idx_from_id(victim_cid).unwrap();
+
+                                // Make sure victim is not already dead
+                                if !self.creatures[victim_idx].is_dead() {
+                                    self.creatures[victim_idx].kill();
+
+                                    // Give creature the immediate energy
+                                    self.creatures[creature_idx].eat_food(self.params.energy_per_food_piece);
+                                    self.creatures[creature_idx].set_killer();
+
+                                }
+                            },
+                            _ => (),
+                        }
+                    }
+                }
 
                 // Handle movement
                 CreatureActions::MoveBackwards |
                 CreatureActions::MoveForwards |
                 CreatureActions::MoveLeft |
                 CreatureActions::MoveRight => {
-                    next_position = self.get_next_position_for_creature(action, creature.position, creature.orientation);
+                    next_position = self.get_next_position_for_creature(action, creature_copy.position, creature_copy.orientation);
                 }
 
                 // Handle reproduction
@@ -313,10 +338,10 @@ impl EnvironmentV1 {
                     // Randomly determine how many offspring this creature will have
                     let num_offspring = rng.gen_range(1..=self.params.max_offspring_per_reproduce);
                     if DEBUG_LEVEL > 1 {
-                        println!("Creature {} is reproducing with {} offspring!", creature.id, num_offspring);
+                        println!("Creature {} is reproducing with {} offspring!", creature_copy.id, num_offspring);
                     }
                     for _offspring_num in 0..num_offspring {
-                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.params.mutation_prob);
+                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &self.creatures[creature_idx], self.params.mutation_prob);
                         self.num_total_creatures += 1;
                         temp_new_creatures.push(new_offspring);
                     }
@@ -329,26 +354,26 @@ impl EnvironmentV1 {
             }
 
             // If there was an update to the position, check for collisions, food, etc...
-            if next_position != creature.position {
+            if next_position != self.creatures[creature_idx].position {
                 if DEBUG_LEVEL > 1 {
-                    println!("Creature {} is moving to {}.{}", creature.id, next_position.x, next_position.y);
+                    println!("Creature {} is moving to {}.{}", self.creatures[creature_idx].id, next_position.x, next_position.y);
                 }
 
-                let pos = creature.position.clone();
+                let pos = self.creatures[creature_idx].position.clone();
 
                 // Detect collisions in next space
                 match self.positions[next_position.x][next_position.y] {
                     // If next space is blank, perform the move
-                    SpaceStates::BlankSpace => {
+                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
-                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(self.creatures[creature_idx].id);
                         self.creatures[creature_idx].set_position(next_position.x, next_position.y);
                     }
 
                     // If next space is food, then eat it!
                     SpaceStates::FoodSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
-                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
+                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(self.creatures[creature_idx].id);
                         self.creatures[creature_idx].eat_food(self.params.energy_per_food_piece);
                         self.creatures[creature_idx].set_position(next_position.x, next_position.y);
                     }
@@ -382,11 +407,11 @@ impl EnvironmentV1 {
             }
         }
 
-        // Evaluate the vision of each of the creatures now that everything is updated
-        self.update_creature_vision();
-
         // Add food pieces according to settings
         self.add_new_food_pieces();
+
+        // Evaluate the vision of each of the creatures now that everything is updated
+        self.update_creature_vision();
 
         // If proper debug level show the env after each step
         if DEBUG_LEVEL > 0 {
@@ -458,7 +483,12 @@ impl EnvironmentV1 {
                 let pos = creature.position.clone();
   
                 // Update the position map to remove this creature and make it's body food
-                self.positions[pos.x][pos.y] = SpaceStates::FoodSpace;
+                // if it was killed, the hunting creature already got energy, so don't leave food behind
+                if creature.was_killed() {
+                    self.positions[pos.x][pos.y] = SpaceStates::FightSpace;
+                } else {
+                    self.positions[pos.x][pos.y] = SpaceStates::FoodSpace;
+                }
 
                 // Mark this dude for removal
                 to_remove.push(creature.id);
@@ -518,16 +548,28 @@ impl EnvironmentV1 {
 
                 // Check what type space is there
                 match self.positions[xpos][ypos] {
-                    SpaceStates::BlankSpace => {},
+                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {
+                        // Reset vision state as we haven't found anything in view yet
+                        let vis : CreatureVisionState = CreatureVisionState {
+                            obj_in_view : false,
+                            dist : 0,
+                            color : CreatureColor::new_from_vec([0,0,0]),
+                            space_type : SpaceStates::BlankSpace,
+                        };
+                        self.creatures[c_idx].set_vision(vis);
+                        // Continue here
+                    },
 
                     // Food space is in view
                     SpaceStates::FoodSpace => {
                         let vis : CreatureVisionState = CreatureVisionState {
                             obj_in_view : true,
                             dist : distance,
-                            color : CreatureColor::new_from_vec(FOOD_SPACE_COLOR)
+                            color : CreatureColor::new_from_vec(FOOD_SPACE_COLOR),
+                            space_type : SpaceStates::FoodSpace,
                         };
                         self.creatures[c_idx].set_vision(vis);
+                        break;
                     },
 
                     // Wall space in view
@@ -535,9 +577,11 @@ impl EnvironmentV1 {
                         let vis : CreatureVisionState = CreatureVisionState {
                             obj_in_view : true,
                             dist : distance,
-                            color : CreatureColor::new_from_vec(WALL_SPACE_COLOR)
+                            color : CreatureColor::new_from_vec(WALL_SPACE_COLOR),
+                            space_type : SpaceStates::WallSpace,
                         };
                         self.creatures[c_idx].set_vision(vis);
+                        break;
                     },
 
                     // Another creature is in view, update the color with the creature's color
@@ -547,9 +591,11 @@ impl EnvironmentV1 {
                         let vis : CreatureVisionState = CreatureVisionState {
                             obj_in_view : true,
                             dist : distance,
-                            color : CreatureColor::new_from_vec(tgt_creature_color)
+                            color : CreatureColor::new_from_vec(tgt_creature_color),
+                            space_type : SpaceStates::CreatureSpace(c_id),
                         };
                         self.creatures[c_idx].set_vision(vis);
+                        break;
                     }
                 }
             }

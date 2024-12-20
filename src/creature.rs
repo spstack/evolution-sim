@@ -21,8 +21,9 @@ pub const DEFAULT_ENERGY_LEVEL : usize = 40;
 pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 200;
 
-pub const DEFAULT_REPRODUCE_AGE : usize = 22;               // Default age at which creature will reproduce
-pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // Default color each creature will be (blue)
+pub const DEFAULT_REPRODUCE_AGE : usize = 22;                // Default age at which creature will reproduce
+pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 40, 255];   // Default color each creature will be (blue)
+pub const KILLER_CREATURE_COLOR : [u8; 3] = [200, 0, 200];   // Color a creature will turn if it has killed (purple)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
 pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
@@ -45,9 +46,9 @@ pub enum CreatureActions {
     RotateCCW,  // rotate counter-clockwise
     Stay,       // Do nothing
     Reproduce,
-    // Kill, //....soon
+    Kill,
 }
-const ENABLED_CREATURE_ACTIONS : [CreatureActions; 8] = [Stay, MoveForwards, MoveBackwards, MoveLeft, MoveRight, RotateCCW, RotateCW, Reproduce];
+const ENABLED_CREATURE_ACTIONS : [CreatureActions; 9] = [Stay, MoveForwards, MoveBackwards, MoveLeft, MoveRight, RotateCCW, RotateCW, Reproduce, Kill];
 
 /// Defines input neuron types to a creature. Each one of these has to directly translate into
 /// a single neuron input in the "brain" of the creature. I.e. the number of entries here
@@ -87,6 +88,7 @@ pub struct CreatureVisionState {
     pub obj_in_view : bool,     // specifies whether there is anything in view. If not, other values should be ignored
     pub dist : usize,           // distance to object (if obj_in_view)
     pub color : CreatureColor,  // color of object (if obj_in_view)
+    pub space_type : SpaceStates, // State of the object
 }
 
 /// Represents the color of a creature
@@ -116,7 +118,7 @@ impl CreatureColor {
 use CreatureActions::*;
 use CreatureInputs::*;
 
-use crate::neural_net::NeuralNet;
+use crate::{neural_net::NeuralNet, SpaceStates};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreatureParams {
@@ -147,6 +149,7 @@ pub struct CreatureV1 {
 
     /// Indicates whether the creature is alive
     pub is_alive : bool,
+    killed : bool,
 
     /// Current position in 2d coordinates x, y
     pub position : CreaturePosition,
@@ -193,10 +196,11 @@ impl CreatureV1 {
             brain : Brain::new(&input_neuron_types,&output_neuron_types),
             id : id,
             is_alive : true,
+            killed : false,
             position : CreaturePosition {x : 0, y : 0},
             orientation : DEFAULT_ORIENTATION,
             energy : DEFAULT_ENERGY_LEVEL,
-            vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0])},
+            vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0]), space_type : SpaceStates::BlankSpace},
             age : 0,
             last_action : CreatureActions::Stay,
             color : CreatureColor::new_from_vec(DEFAULT_CREATURE_COLOR),
@@ -216,10 +220,11 @@ impl CreatureV1 {
             brain : Brain::new_copy(&parent.brain, mutation_prob),
             id : id,
             is_alive : true,
+            killed : false,
             position : CreaturePosition {x : parent.position.x, y : parent.position.y},
             orientation : parent.orientation,
             energy : parent.params.starting_energy,
-            vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0])},
+            vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0]), space_type : SpaceStates::BlankSpace},
             age : 0,
             last_action : CreatureActions::Stay,
             color : parent.color.clone(),
@@ -227,6 +232,9 @@ impl CreatureV1 {
             input_neuron_types : parent.input_neuron_types.clone(),
             output_neuron_types : parent.output_neuron_types.clone(),
         };
+
+        // Since this creature hasn't killed yet, change it's color a bit to indicate it's more docile (until proven otherwise)
+        temp_creature.unset_killer();
 
         return temp_creature;
     }
@@ -277,6 +285,24 @@ impl CreatureV1 {
         self.reproduction_age = repro_age;
     }
 
+    /// Kill this creature (another creature has hunted it)
+    pub fn kill(&mut self) {
+        self.energy = 0;
+        self.is_alive = false;
+        self.killed = true;
+    }
+
+    /// Mark this creature as a killer (carnivore). This changes it's color to indicate to others that it's dangerous
+    pub fn set_killer(&mut self) {
+        self.color.red = self.color.red.saturating_add(10);
+        self.color.blue = self.color.blue.saturating_sub(10);
+    }
+
+    pub fn unset_killer(&mut self) {
+        self.color.red = self.color.red.saturating_sub(10);
+        self.color.blue = self.color.blue.saturating_add(10);
+    }
+
     /// Returns true if the creature is dead and false if it is alive
     pub fn is_dead(&self) -> bool {
         if self.energy > 0  && self.age < MAX_POSSIBLE_AGE {
@@ -284,6 +310,11 @@ impl CreatureV1 {
         } else {
             return true;
         }
+    }
+
+    // returns whether this creature has been killed
+    pub fn was_killed(&self) -> bool {
+        return self.killed;
     }
 
 

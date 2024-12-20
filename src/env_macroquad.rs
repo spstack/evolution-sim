@@ -232,11 +232,12 @@ impl EnvMacroquad {
                     SpaceStates::CreatureSpace(id) => {
                         let c_id = self.env.get_creature_idx_from_id(id).unwrap(); 
                         let creature : &CreatureV1 = &self.env.creatures[c_id];
-                        self.draw_creature_square(x, y, creature.orientation);
+                        self.draw_creature_square(x, y, creature.orientation, creature.color);
                     }
                     SpaceStates::FoodSpace => self.draw_food_space(x, y),
                     SpaceStates::WallSpace => self.draw_wall_space(x, y),
-                    _ => (),
+                    SpaceStates::FightSpace => self.draw_fight_space(x, y), 
+                    SpaceStates::BlankSpace => (),
                 }
             }
         }
@@ -400,13 +401,13 @@ impl EnvMacroquad {
     }
 
     /// Draw a single creature square to the specified location on the screen
-    fn draw_creature_square(&self, x_pos : usize, y_pos : usize, orientation : CreatureOrientation) {
+    fn draw_creature_square(&self, x_pos : usize, y_pos : usize, orientation : CreatureOrientation, color : CreatureColor) {
 
         let xpos_pix = (x_pos as f32) * self.grid_x_size;
         let ypos_pix = (y_pos as f32) * self.grid_y_size;
 
         // Draw the rectangle "body" of the creature
-        draw_rectangle(xpos_pix, ypos_pix, self.grid_x_size, self.grid_y_size, BLUE);
+        draw_rectangle(xpos_pix, ypos_pix, self.grid_x_size, self.grid_y_size, Color::from_rgba(color.red, color.green, color.blue, 255));
 
         // Draw a short line to indicate which direction the creature is facing
         let x_gridsize_div_2 = self.grid_x_size / 2.0;
@@ -431,6 +432,11 @@ impl EnvMacroquad {
     /// Draw a wall space on the screen
     fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
         draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, BLACK);
+    }
+
+    /// Draw a single food space on the screen
+    fn draw_fight_space(&self, x_pos : usize, y_pos : usize) {
+        draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, Color {r: 1.0, g: 0.0, b: 0.0, a: 0.25});
     }
 
     /// Update the temporary parameter strings that param panel is populated from with the
