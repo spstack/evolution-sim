@@ -10,4 +10,10 @@ If a creature lives long enough, it'll reproduce spreading it's brain structure 
 optional random mutations). The end result should allow the user to play with a whole bunch of parameters to 
 see the effect on the population.
 
+The visualization uses the [macroquad](https://macroquad.rs/) library, and yeah I realize the UI is horrible lol.
+I'm just going for basic functionality at this point. In the below screenshot, the creatures are blue, the food pieces
+are green, and the black spaces are "walls".
+
+![example screenshot](images/example_screenshot1.jpg)
+
 
