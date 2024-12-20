@@ -17,14 +17,14 @@ use serde::{Deserialize, Serialize};
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEFAULT_ENERGY_LEVEL : usize = 20;
+pub const DEFAULT_ENERGY_LEVEL : usize = 40;
 pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 200;
 
 pub const DEFAULT_REPRODUCE_AGE : usize = 22;               // Default age at which creature will reproduce
 pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 0, 255];   // Default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
-pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = 20;       // Default amount of energy it takes to reproduce
+pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
 pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
                                                                             // Intent is that this should be greater than the starting energy, so that creatures only reproduce when they find food
 
@@ -37,8 +37,8 @@ const DEBUG_LEVEL : usize = 0;  // Debug print level (higher number = more detai
 /// Defines the possible actions that a creature of any type can take
 #[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CreatureActions {
-    MoveUp,
-    MoveDown,
+    MoveForwards,
+    MoveBackwards,
     MoveLeft,
     MoveRight,
     RotateCW,   // rotate clockwise
@@ -47,7 +47,7 @@ pub enum CreatureActions {
     Reproduce,
     // Kill, //....soon
 }
-const ENABLED_CREATURE_ACTIONS : [CreatureActions; 8] = [Stay, MoveUp, MoveDown, MoveLeft, MoveRight, RotateCCW, RotateCW, Reproduce];
+const ENABLED_CREATURE_ACTIONS : [CreatureActions; 8] = [Stay, MoveForwards, MoveBackwards, MoveLeft, MoveRight, RotateCCW, RotateCW, Reproduce];
 
 /// Defines input neuron types to a creature. Each one of these has to directly translate into
 /// a single neuron input in the "brain" of the creature. I.e. the number of entries here
@@ -286,7 +286,6 @@ impl CreatureV1 {
         }
     }
 
-    
 
     /// Sense surroundings by populating the input neurons to reflect current state
     /// This should be called before `perform_next_action`

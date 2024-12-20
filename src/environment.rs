@@ -14,14 +14,14 @@ use rand::Rng;
 pub const DEBUG_LEVEL : usize = 0;
 
 // Env parameters
-pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 20;   // How much energy each piece of food will give a creature
+pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
 pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 1; // Number of offspring that each creature will have upon each reproduction event
 pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
-pub const MAX_OFFSPRING_SPAWN_DIST : isize = 4;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
+pub const MAX_OFFSPRING_SPAWN_DIST : isize = 3;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
@@ -274,13 +274,15 @@ impl EnvironmentV1 {
 
         // Evaluate the next action for each creature
         for creature_idx in 0..self.creatures.len() {
-            let creature = &mut self.creatures[creature_idx];
 
             // First update the 'senses' of the creature
-            creature.sense_surroundings();
+            self.creatures[creature_idx].sense_surroundings();
 
             // Then actually evaluate the brain net to get the next action it'll take
-            let action : CreatureActions = creature.perform_next_action();
+            let action : CreatureActions = self.creatures[creature_idx].perform_next_action();
+
+            // Create a reference to the creature now that we've done the mutable work (perform next_action)
+            let creature = &self.creatures[creature_idx];
 
             // if the creature is dead, don't bother handling the next action. Will be removed
             if creature.is_dead() {
@@ -294,44 +296,19 @@ impl EnvironmentV1 {
                 println!("Next Action for creature {} is {:?} | age = {} | energy = {}", creature.id, action, creature.age, creature.energy);
             }
 
-            // Now handle the action
-            let mut next_position : CreaturePosition = creature.position.clone();
+            let mut next_position = creature.position.clone();
 
             match action {
-                CreatureActions::MoveUp => {
-                    if next_position.y > 0 {
-                        next_position.y -= 1;
-                    } else {
-                        next_position.y = self.params.env_y_size - 1;
-                    }
-                },
 
-                CreatureActions::MoveDown => {
-                    // Check if move would go beyond the bounds of this board
-                    if next_position.y < self.positions.len() - 1 {
-                        next_position.y += 1;
-                    } else {
-                        next_position.y = 0;
-                    }
-                },
-
-                CreatureActions::MoveLeft => {
-                    if next_position.x > 0 {
-                        next_position.x -= 1;
-                    } else {
-                        next_position.x = self.params.env_x_size - 1;
-                    }
-                },
-
+                // Handle movement
+                CreatureActions::MoveBackwards |
+                CreatureActions::MoveForwards |
+                CreatureActions::MoveLeft |
                 CreatureActions::MoveRight => {
-                    // Check if move would go beyond the bounds of this board
-                    if next_position.x < self.positions[0].len() - 1 {
-                        next_position.x += 1;
-                    } else {
-                        next_position.x = 0;
-                    }
-                },
+                    next_position = self.get_next_position_for_creature(action, creature.position, creature.orientation);
+                }
 
+                // Handle reproduction
                 CreatureActions::Reproduce => {
                     // Randomly determine how many offspring this creature will have
                     let num_offspring = rng.gen_range(1..=self.params.max_offspring_per_reproduce);
@@ -365,15 +342,15 @@ impl EnvironmentV1 {
                     SpaceStates::BlankSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
-                        creature.set_position(next_position.x, next_position.y);
+                        self.creatures[creature_idx].set_position(next_position.x, next_position.y);
                     }
 
                     // If next space is food, then eat it!
                     SpaceStates::FoodSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
-                        creature.eat_food(self.params.energy_per_food_piece);
-                        creature.set_position(next_position.x, next_position.y);
+                        self.creatures[creature_idx].eat_food(self.params.energy_per_food_piece);
+                        self.creatures[creature_idx].set_position(next_position.x, next_position.y);
                     }
 
                     // If space is wall, then move is invalid. Stay put
@@ -579,6 +556,68 @@ impl EnvironmentV1 {
         }
     }
 
+    /// Given the current position and action
+    fn get_next_position_for_creature(&self, action : CreatureActions, position : CreaturePosition, orientation : CreatureOrientation) -> CreaturePosition {
+        // Now handle the action
+        let mut next_position : CreaturePosition = position;
+
+        match orientation {
+            CreatureOrientation::Up => {
+                match action {
+                    CreatureActions::MoveForwards => {
+                        next_position.y = if position.y == 0 {self.params.env_y_size - 1} else {next_position.y - 1};
+                    }
+                    CreatureActions::MoveLeft => {
+                        next_position.x = if position.x == 0 {self.params.env_x_size - 1} else {next_position.x - 1};
+                    },
+                    CreatureActions::MoveBackwards => next_position.y = (next_position.y + 1) % self.params.env_y_size,
+                    CreatureActions::MoveRight => next_position.x = (next_position.x + 1) % self.params.env_x_size,
+                    _ => (), // no other actions change the position
+                }
+            },
+            CreatureOrientation::Down => {
+                match action {
+                    CreatureActions::MoveBackwards => {
+                        next_position.y = if position.y == 0 {self.params.env_y_size - 1} else {next_position.y - 1};
+                    }
+                    CreatureActions::MoveRight => {
+                        next_position.x = if position.x == 0 {self.params.env_x_size - 1} else {next_position.x - 1};
+                    },
+                    CreatureActions::MoveForwards => next_position.y = (next_position.y + 1) % self.params.env_y_size,
+                    CreatureActions::MoveLeft => next_position.x = (next_position.x + 1) % self.params.env_x_size,
+                    _ => (), // no other actions change the position
+                }
+            },
+            CreatureOrientation::Left => {
+                match action {
+                    CreatureActions::MoveRight => {
+                        next_position.y = if position.y == 0 {self.params.env_y_size - 1} else {next_position.y - 1};
+                    }
+                    CreatureActions::MoveForwards => {
+                        next_position.x = if position.x == 0 {self.params.env_x_size - 1} else {next_position.x - 1};
+                    },
+                    CreatureActions::MoveLeft => next_position.y = (next_position.y + 1) % self.params.env_y_size,
+                    CreatureActions::MoveBackwards => next_position.x = (next_position.x + 1) % self.params.env_x_size,
+                    _ => (), // no other actions change the position
+                }
+            },
+            CreatureOrientation::Right => {
+                match action {
+                    CreatureActions::MoveLeft => {
+                        next_position.y = if position.y == 0 {self.params.env_y_size - 1} else {next_position.y - 1};
+                    }
+                    CreatureActions::MoveBackwards => {
+                        next_position.x = if position.x == 0 {self.params.env_x_size - 1} else {next_position.x - 1};
+                    },
+                    CreatureActions::MoveRight => next_position.y = (next_position.y + 1) % self.params.env_y_size,
+                    CreatureActions::MoveForwards => next_position.x = (next_position.x + 1) % self.params.env_x_size,
+                    _ => (), // no other actions change the position
+                }
+            },
+        }
+
+        return next_position;
+    }
 
     /// Get a random blank spot on the board
     fn get_rand_blank_space(&self) -> CreaturePosition {
