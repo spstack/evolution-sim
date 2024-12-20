@@ -49,27 +49,50 @@ pub enum SpaceStates {
 }
 
 
-/// Structure representing a very simple 2-D environment
-#[derive(Serialize, Deserialize, Clone)]
-pub struct EnvironmentV1 {
-    // Parameters
+/// Structure that defines all input parameters to a new environment
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct EnvironmentParams {
     pub env_x_size : usize,                 // X size of the sim in "spaces"
     pub env_y_size : usize,                 // Y size of the sim in "spaces"
     pub num_start_creatures : usize,        // Number of creatures to start the sim with
     pub num_start_food : usize,             // Number of starting food spaces
+    pub num_start_walls : usize,            // Number of wall spaces on the board
     pub energy_per_food_piece : usize,      // Number of energy units that will be given per food consumed 
     pub max_offspring_per_reproduce : usize,// Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : f32,                // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
     pub avg_new_food_per_day : f32,         // Average number of new food pieces added to the environment per day
+}
+impl EnvironmentParams {
+    /// Return a default version of the parameters
+    pub fn new() -> EnvironmentParams {
+        EnvironmentParams {
+            env_x_size : 50,
+            env_y_size : 50,
+            num_start_creatures : 100,  
+            num_start_food : 150,
+            num_start_walls : 200,
+            energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
+            max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
+            mutation_prob : DEFAULT_MUTATION_PROB,
+            avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP, 
+        }
+    }
+}
+
+/// Structure representing a very simple 2-D environment
+#[derive(Serialize, Deserialize, Clone)]
+pub struct EnvironmentV1 {
+    // Parameters
+    pub params : EnvironmentParams,     // All parameters that can be specified when creating a new env 
 
     // Current state
-    pub creatures : Vec<CreatureV1>,// Vector containing all creature instances
+    pub creatures : Vec<CreatureV1>,    // Vector containing all creature instances
     pub positions : Vec<Vec<SpaceStates>>, // Contains the states of each space.
     pub time_step : usize,              // Represents the current time step in the sim
     pub num_food : usize,               // Number of current food pieces on the board
     pub num_creatures : usize,          // Number of living creatures on the board
-    pub num_walls : usize,              // Number of wall spaces on the board
     pub num_blank : usize,              // Number of blank spaces on the board
+    pub num_walls : usize,              // Number of wall spaces on the board (should be the same as the start parameter, but used for sanity check)
     pub num_total_creatures : usize,    // Number of total creatures created throughout sim
 }
 
@@ -78,26 +101,29 @@ pub struct EnvironmentV1 {
 impl EnvironmentV1 {
 
     /// Constructor for new environment instance that's randomly populated
-    pub fn new_rand(env_x_size : usize, env_y_size : usize, num_start_creatures: usize, num_start_food : usize, num_walls : usize) -> EnvironmentV1 {
+    pub fn new_rand(in_params : &EnvironmentParams) -> EnvironmentV1 {
         let mut rng = rand::thread_rng();
 
         // Initialize all positions to be blank at first
-        let temp_positions = vec![vec![SpaceStates::BlankSpace; env_y_size]; env_x_size];
+        let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
 
         // Initialize creature vector
-        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(num_start_creatures);
-        let num_spaces = env_x_size * env_y_size;
+        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(in_params.num_start_creatures);
+        let num_spaces = in_params.env_x_size * in_params.env_y_size;
 
         // Create temporary environment, transferring ownership of vectors
         let mut temp_env = EnvironmentV1 {
-            env_x_size : env_x_size,
-            env_y_size : env_y_size,
-            num_start_creatures : num_start_creatures,  
-            num_start_food : num_start_food,
-            energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
-            max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
-            mutation_prob : DEFAULT_MUTATION_PROB,
-            avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP,
+            params: EnvironmentParams {
+                env_x_size : in_params.env_x_size,
+                env_y_size : in_params.env_y_size,
+                num_start_creatures : in_params.num_start_creatures,  
+                num_start_food : in_params.num_start_food,
+                num_start_walls : in_params.num_start_walls,
+                energy_per_food_piece : in_params.energy_per_food_piece,
+                max_offspring_per_reproduce : in_params.max_offspring_per_reproduce,
+                mutation_prob : in_params.mutation_prob,
+                avg_new_food_per_day : in_params.avg_new_food_per_day,
+            },
             creatures : temp_creature_vec,
             positions : temp_positions,
             time_step : 0,
@@ -105,17 +131,17 @@ impl EnvironmentV1 {
             num_creatures : 0,
             num_walls : 0,
             num_blank : num_spaces,
-            num_total_creatures : num_start_creatures,
+            num_total_creatures : in_params.num_start_creatures,
         };
 
         // Fill in random spaces with food
-        for _food_num in 0..num_start_food {
+        for _food_num in 0..in_params.num_start_food {
             let pos = temp_env.get_rand_blank_space();
             temp_env.add_food_space(pos);
         }
 
         // Fill in random spaces with creatures
-        for creature_num in 0..num_start_creatures {
+        for creature_num in 0..in_params.num_start_creatures {
             // Create creature
             let mut creature = CreatureV1::new(creature_num);
 
@@ -140,7 +166,7 @@ impl EnvironmentV1 {
         }
 
         // Fill random wall spaces
-        for _wall_num in 0..num_walls {
+        for _wall_num in 0..in_params.num_start_walls {
             let pos = temp_env.get_rand_blank_space();
             temp_env.add_wall_space(pos);
         }
@@ -177,11 +203,11 @@ impl EnvironmentV1 {
     /// Print the current state of the environment board
     pub fn show(&self) {
         println!();
-        let num_dashes = self.env_x_size * 3 + 1;
+        let num_dashes = self.params.env_x_size * 3 + 1;
         println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
-        for y in 0..self.env_y_size {
+        for y in 0..self.params.env_y_size {
             print!("|");
-            for x in 0..self.env_x_size {
+            for x in 0..self.params.env_x_size {
                 match self.positions[x][y] {
                     SpaceStates::BlankSpace => print!("   "),
                     SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
@@ -213,8 +239,8 @@ impl EnvironmentV1 {
         let mut temp_walls : usize = 0; 
         let mut temp_creatures : usize = 0; 
         let mut temp_blank : usize = 0; 
-        for x in 0..self.env_x_size {
-            for y in 0..self.env_y_size {
+        for x in 0..self.params.env_x_size {
+            for y in 0..self.params.env_y_size {
                 match self.positions[x][y] {
                     SpaceStates::BlankSpace => temp_blank += 1,
                     SpaceStates::FoodSpace => temp_food += 1,
@@ -281,7 +307,7 @@ impl EnvironmentV1 {
                     if next_position.y > 0 {
                         next_position.y -= 1;
                     } else {
-                        next_position.y = self.env_y_size - 1;
+                        next_position.y = self.params.env_y_size - 1;
                     }
                 },
 
@@ -298,7 +324,7 @@ impl EnvironmentV1 {
                     if next_position.x > 0 {
                         next_position.x -= 1;
                     } else {
-                        next_position.x = self.env_x_size - 1;
+                        next_position.x = self.params.env_x_size - 1;
                     }
                 },
 
@@ -313,12 +339,12 @@ impl EnvironmentV1 {
 
                 CreatureActions::Reproduce => {
                     // Randomly determine how many offspring this creature will have
-                    let num_offspring = rng.gen_range(1..=self.max_offspring_per_reproduce);
+                    let num_offspring = rng.gen_range(1..=self.params.max_offspring_per_reproduce);
                     if DEBUG_LEVEL > 1 {
                         println!("Creature {} is reproducing with {} offspring!", creature.id, num_offspring);
                     }
                     for _offspring_num in 0..num_offspring {
-                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.mutation_prob);
+                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &creature, self.params.mutation_prob);
                         self.num_total_creatures += 1;
                         temp_new_creatures.push(new_offspring);
                     }
@@ -351,7 +377,7 @@ impl EnvironmentV1 {
                     SpaceStates::FoodSpace => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(creature.id);
-                        creature.eat_food(self.energy_per_food_piece);
+                        creature.eat_food(self.params.energy_per_food_piece);
                         creature.set_position(next_position.x, next_position.y);
                     }
 
@@ -405,17 +431,17 @@ impl EnvironmentV1 {
     fn add_new_food_pieces(&mut self) {
         let mut rng = rand::thread_rng();
 
-        if self.avg_new_food_per_day < 1.0 {
+        if self.params.avg_new_food_per_day < 1.0 {
             // If the number of new food is less than 1, then decide whether to add
             // a single food piece treating `avg_new_food_per_day` as a probability
-            if rng.gen::<f32>() < self.avg_new_food_per_day {
+            if rng.gen::<f32>() < self.params.avg_new_food_per_day {
                 self.add_food_space(self.get_rand_blank_space());
             }
         } else {
             // If avg the number of food pieces is greater than 1, then randomly sample from
             // range where `avg_new_food_per_day` is the center of the distribution. Result
             // will represent how many food pieces to add
-            let max_food = self.avg_new_food_per_day * 2.0;
+            let max_food = self.params.avg_new_food_per_day * 2.0;
             let num_food = rng.gen_range(0.0..max_food).round() as usize;
             for _ in 0..num_food {
                 self.add_food_space(self.get_rand_blank_space());
@@ -509,7 +535,7 @@ impl EnvironmentV1 {
                 }
 
                 // Check the bounds - if we're at the end or wrapped around, there's nothing to see. Return
-                if (xpos >= self.env_x_size) || (ypos >= self.env_y_size) {
+                if (xpos >= self.params.env_x_size) || (ypos >= self.params.env_y_size) {
                     break;
                 }
 
@@ -569,8 +595,8 @@ impl EnvironmentV1 {
 
         // Loop until we find a blank space
         while !done {
-            let x = rng.gen_range(0..self.env_x_size);
-            let y = rng.gen_range(0..self.env_y_size);
+            let x = rng.gen_range(0..self.params.env_x_size);
+            let y = rng.gen_range(0..self.params.env_y_size);
 
             // Only allow overwriting of blank spaces
             match self.positions[x][y] {
@@ -619,11 +645,11 @@ impl EnvironmentV1 {
             if y_isize < 0 {
                 y_isize = 0;
             }
-            if x_isize >= self.env_x_size as isize {
-                x_isize = self.env_x_size as isize - 1;
+            if x_isize >= self.params.env_x_size as isize {
+                x_isize = self.params.env_x_size as isize - 1;
             }
-            if y_isize >= self.env_y_size as isize {
-                y_isize = self.env_y_size as isize - 1;
+            if y_isize >= self.params.env_y_size as isize {
+                y_isize = self.params.env_y_size as isize - 1;
             }
 
             let x: usize = x_isize as usize;

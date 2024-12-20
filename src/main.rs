@@ -48,7 +48,8 @@ r = run until no creatures left
 fn test_env_v1() {
 
     // Allocate the env
-    let mut env = EnvironmentV1::new_rand(40, 40, 20, 20, 5);
+    let params = EnvironmentParams::new();
+    let mut env = EnvironmentV1::new_rand(&params);
 
     // Show initial state
     env.show();

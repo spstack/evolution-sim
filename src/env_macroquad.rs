@@ -1,6 +1,3 @@
-use std::io::Write;
-use std::num::ParseIntError;
-
 /** ===============================================================================
  * File: env_piston.rs
  * Author: Scott Stack
@@ -10,6 +7,7 @@ use std::num::ParseIntError;
 use crate::creature::*;
 use crate::environment;
 use crate::environment::*;
+use std::io::Write;
 use std::fs::File;
 use macroquad::prelude::*;
 use macroquad::ui::{
@@ -69,14 +67,14 @@ const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macro
 
 /// Parameters for this simulation
 struct SimParameters {
-    grid_x_size : f32,              // X size of a single grid square in pixels
-    grid_y_size : f32,              // Y size of a single grid square in pixels
+    
 
     // String versions of the parameters for storing the text box versions
     pub env_x_size : String,                    // X size of the sim in "spaces"
     pub env_y_size : String,                    // Y size of the sim in "spaces"
     pub num_start_creatures : String,           // Number of creatures to start the sim with
     pub num_start_food : String,                // Number of starting food spaces
+    pub num_start_walls : String,               // Number of starting wall spaces
     pub energy_per_food_piece : String,         // Number of energy units that will be given per food consumed 
     pub max_offspring_per_reproduce : String,   // Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : String,                 // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
@@ -103,6 +101,10 @@ pub struct EnvMacroquad {
     step_to_jump_to : usize,    // Which step in the simulation we should jump to (if state is FASTFORWARD)
     step_to_jump_to_str : String, // String version of `step_to_jump_to` variable that holds
 
+    // Environment derived parameters
+    grid_x_size : f32,              // X size of a single grid square in pixels
+    grid_y_size : f32,              // Y size of a single grid square in pixels
+
     // Layout parameters
     stats_panel_x_pos : f32,
     stats_panel_y_pos : f32,
@@ -111,12 +113,12 @@ pub struct EnvMacroquad {
     control_panel_x_pos : f32,
     control_panel_y_pos : f32,
 
+    // Window params
     screen_width_pixels : f32,      // X Size of the environment in pixels
     screen_height_pixels : f32,     // Y size of the environment in pixels
 
     // Assets
     background_texture : Texture2D, // Background image texture
-
 }
 
 
@@ -132,32 +134,40 @@ impl EnvMacroquad {
         // First set the screen size to default. Include the size of the stats panel
         request_new_screen_size(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX);
 
+        // Initialize environment parameters
+        let mut temp_env_params = EnvironmentParams::new(); 
+        temp_env_params.env_x_size = NUM_GRID_SQUARES_X;
+        temp_env_params.env_y_size = NUM_GRID_SQUARES_Y;
+        temp_env_params.num_start_creatures = DEFAULT_START_CREATURES;
+        temp_env_params.num_start_food = DEFAULT_START_FOOD;
+        temp_env_params.num_start_walls = DEFAULT_START_WALLS;
+        // - the rest of the parameters are just the environment default...
+
         let mut temp_env = EnvMacroquad {
             params : SimParameters {
-                grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
-                grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
                 env_x_size : String::new(),
                 env_y_size : String::new(),
                 num_start_creatures : String::new(),
                 num_start_food : String::new(),
+                num_start_walls : String::new(),
                 energy_per_food_piece : String::new(),
                 max_offspring_per_reproduce : String::new(),
                 mutation_prob : String::new(),
                 avg_new_food_per_day : String::new(),
             },
-            env : EnvironmentV1::new_rand(
-                NUM_GRID_SQUARES_X, // env_x_size
-                NUM_GRID_SQUARES_Y, // env_y_size
-                DEFAULT_START_CREATURES, // num_start_creatures
-                DEFAULT_START_FOOD, // num_start_food
-                DEFAULT_START_WALLS, // num_walls
-            ),
+
+            // Generate the environment given the parameters
+            env : EnvironmentV1::new_rand(&temp_env_params),
 
             // State
             state : SimState::RUNNING,
             last_sim_update : get_time(),
             step_to_jump_to : 0,
             step_to_jump_to_str : String::new(),
+
+            // Environment display params
+            grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
+            grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
 
             // Set position of stats panel
             stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
@@ -171,7 +181,7 @@ impl EnvMacroquad {
             screen_width_pixels : WINDOW_WIDTH_PX,
             screen_height_pixels : WINDOW_HEIGHT_PX,
 
-            // background_image : Image::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)).unwrap(),
+            // background_image
             background_texture : Texture2D::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)),
         };
 
@@ -180,6 +190,17 @@ impl EnvMacroquad {
 
 
         return temp_env;
+    }
+
+    /// Generate a new environment given the parameter values in the text boxes
+    pub fn generate_new_environment(&mut self) {
+
+        // Populate the parameters with values from text boxes
+        if self.update_params_from_text() {
+
+            // Generate a new environment with new params
+            self.env = environment::EnvironmentV1::new_rand(&self.env.params);
+        }
     }
 
     /// Run and display the next step of the simulation
@@ -205,8 +226,8 @@ impl EnvMacroquad {
         draw_texture(&self.background_texture, 0.0, 0.0, WHITE);
 
         // For each simulation space on the board, update with proper piece
-        for x in 0..self.env.env_x_size {
-            for y in 0..self.env.env_y_size {
+        for x in 0..self.env.params.env_x_size {
+            for y in 0..self.env.params.env_y_size {
                 match self.env.positions[x][y] {
                     SpaceStates::CreatureSpace(id) => {
                         let c_id = self.env.get_creature_idx_from_id(id).unwrap(); 
@@ -326,7 +347,12 @@ impl EnvMacroquad {
 
             // Button to save the current environment as a json file
             if ui.button(None, "SAVE ENVIRONMENT") {
-                self.save_environment("data/temp_env.json".to_string());
+                self.save_environment("data/saved_env.json".to_string());
+            }
+            // Button to save the current environment as a json file
+            ui.same_line(0.0);
+            if ui.button(None, "LOAD ENVIRONMENT") {
+                // TODO: implement
             }
 
             ui.pop_skin();
@@ -342,10 +368,16 @@ impl EnvMacroquad {
                 ui.input_text(hash!(), "Env Y Size", &mut self.params.env_y_size);
                 ui.input_text(hash!(), "Num Start Creatures", &mut self.params.num_start_creatures);
                 ui.input_text(hash!(), "Num Start Food", &mut self.params.num_start_food);
+                ui.input_text(hash!(), "Num Start Walls", &mut self.params.num_start_walls);
                 ui.input_text(hash!(), "Energy per Food", &mut self.params.energy_per_food_piece);
                 ui.input_text(hash!(), "Max offspring per Reproduce", &mut self.params.max_offspring_per_reproduce);
                 ui.input_text(hash!(), "Mutation Probability", &mut self.params.mutation_prob);
                 ui.input_text(hash!(), "Avg New Food per Step", &mut self.params.avg_new_food_per_day);
+
+                // Add button to regenerate new environment
+                if ui.button(None, "Generate New Random Environment") {
+                    self.generate_new_environment();
+                }
             });
     }
 
@@ -370,15 +402,15 @@ impl EnvMacroquad {
     /// Draw a single creature square to the specified location on the screen
     fn draw_creature_square(&self, x_pos : usize, y_pos : usize, orientation : CreatureOrientation) {
 
-        let xpos_pix = (x_pos as f32) * self.params.grid_x_size;
-        let ypos_pix = (y_pos as f32) * self.params.grid_y_size;
+        let xpos_pix = (x_pos as f32) * self.grid_x_size;
+        let ypos_pix = (y_pos as f32) * self.grid_y_size;
 
         // Draw the rectangle "body" of the creature
-        draw_rectangle(xpos_pix, ypos_pix, self.params.grid_x_size, self.params.grid_y_size, BLUE);
+        draw_rectangle(xpos_pix, ypos_pix, self.grid_x_size, self.grid_y_size, BLUE);
 
         // Draw a short line to indicate which direction the creature is facing
-        let x_gridsize_div_2 = self.params.grid_x_size / 2.0;
-        let y_gridsize_div_2 = self.params.grid_y_size / 2.0;
+        let x_gridsize_div_2 = self.grid_x_size / 2.0;
+        let y_gridsize_div_2 = self.grid_y_size / 2.0;
         let center_x = xpos_pix + x_gridsize_div_2;
         let center_y = ypos_pix + y_gridsize_div_2; 
 
@@ -393,27 +425,72 @@ impl EnvMacroquad {
     /// Draw a single food space on the screen
     fn draw_food_space(&self, x_pos : usize, y_pos : usize) {
         let food_color = Color {r: (FOOD_SPACE_COLOR[0] as f32) / 255.0, g: (FOOD_SPACE_COLOR[1] as f32) / 255.0, b : (FOOD_SPACE_COLOR[2] as f32) / 255.0 , a: 1.0};
-        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, food_color);
+        draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, food_color);
     }
 
     /// Draw a wall space on the screen
     fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
-        draw_rectangle((x_pos as f32) * self.params.grid_x_size, (y_pos as f32) * self.params.grid_y_size, self.params.grid_x_size, self.params.grid_y_size, BLACK);
+        draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, BLACK);
     }
 
     /// Update the temporary parameter strings that param panel is populated from with the
     /// actual values from the environment
     fn repopulate_parameter_strings(&mut self) {
-        self.params.env_x_size = format!("{}", self.env.env_x_size); 
-        self.params.env_y_size = format!("{}", self.env.env_y_size); 
-        self.params.num_start_creatures = format!("{}", self.env.num_start_creatures); 
-        self.params.num_start_food = format!("{}", self.env.num_start_food); 
-        self.params.energy_per_food_piece = format!("{}", self.env.energy_per_food_piece); 
-        self.params.max_offspring_per_reproduce = format!("{}", self.env.max_offspring_per_reproduce); 
-        self.params.mutation_prob = format!("{}", self.env.mutation_prob); 
-        self.params.avg_new_food_per_day = format!("{}", self.env.avg_new_food_per_day); 
+        self.params.env_x_size = format!("{}", self.env.params.env_x_size); 
+        self.params.env_y_size = format!("{}", self.env.params.env_y_size); 
+        self.params.num_start_creatures = format!("{}", self.env.params.num_start_creatures); 
+        self.params.num_start_food = format!("{}", self.env.params.num_start_food); 
+        self.params.num_start_walls = format!("{}", self.env.params.num_start_walls); 
+        self.params.energy_per_food_piece = format!("{}", self.env.params.energy_per_food_piece); 
+        self.params.max_offspring_per_reproduce = format!("{}", self.env.params.max_offspring_per_reproduce); 
+        self.params.mutation_prob = format!("{}", self.env.params.mutation_prob); 
+        self.params.avg_new_food_per_day = format!("{}", self.env.params.avg_new_food_per_day); 
     }
 
+    /// Update the environment parameters from the values that are in the text boxes
+    /// This should be called right before a new simulation is set up/generated
+    /// Function returns True if all parameters are updated and false if any parameter is invalid
+    /// or cannot be parsed
+    fn update_params_from_text(&mut self) -> bool {
+        // Create temporary params struct to validate everything before we apply it
+        let mut temp_params = EnvironmentParams::new();
+
+        // Parse the text to make sure that at least works
+        temp_params.env_x_size = self.params.env_x_size.parse::<usize>().expect("Error parsing env_x_size");
+        temp_params.env_y_size = self.params.env_x_size.parse::<usize>().expect("Error parsing env_y_size");
+        temp_params.num_start_creatures = self.params.num_start_creatures.parse::<usize>().expect("Error parsing num_start_creatures");
+        temp_params.num_start_food = self.params.num_start_food.parse::<usize>().expect("Error parsing num_start_food");
+        temp_params.num_start_walls = self.params.num_start_walls.parse::<usize>().expect("Error parsing num_start_walls");
+        temp_params.energy_per_food_piece = self.params.energy_per_food_piece.parse::<usize>().expect("Error parsing energy_per_food_piece");
+        temp_params.max_offspring_per_reproduce = self.params.max_offspring_per_reproduce.parse::<usize>().expect("Error parsing max_offspring_per_reproduce");
+        temp_params.mutation_prob = self.params.mutation_prob.parse::<f32>().expect("Error parsing mutation_prob");
+        temp_params.avg_new_food_per_day = self.params.avg_new_food_per_day.parse::<f32>().expect("Error parsing avg_new_food_per_day");
+
+        let num_spaces = temp_params.env_x_size * temp_params.env_y_size;
+
+        // Validate a few things
+        if temp_params.env_x_size > 10000 || temp_params.env_y_size > 10000 {
+            println!("Error, invalid environment size specified");
+            return false;
+        }
+        if temp_params.mutation_prob > 1.0 || temp_params.mutation_prob < 0.0 {
+            println!("Error: mutation_prob is invalid. Must be between 0 and 1");
+            return false;
+        }
+        if temp_params.num_start_food > num_spaces || temp_params.num_start_creatures > num_spaces || temp_params.num_start_walls > num_spaces {
+            println!("Error: number of start food/creatures/walls is too large for a {} x {} grid", temp_params.env_x_size, temp_params.env_y_size);
+            return false;
+        }
+
+        // Update some internal macroquad variables whos values are derived from env variables
+        self.grid_x_size = SCREEN_SIZE_X / (temp_params.env_x_size as f32);
+        self.grid_y_size = SCREEN_SIZE_Y / (temp_params.env_y_size as f32);
+
+        // All good, copy the temp params into the real one
+        self.env.params = temp_params;
+
+        return true;
+    }
 
     /// Update the display for fast forward mode
     /// basically just update the popup and run the simulation
