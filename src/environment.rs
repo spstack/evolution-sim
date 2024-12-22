@@ -513,6 +513,15 @@ impl EnvironmentV1 {
         // Check vision of all creatures
         for c_idx in 0..self.creatures.len() {
 
+            // Reset vision state as we haven't found anything in view yet
+            let vis : CreatureVisionState = CreatureVisionState {
+                obj_in_view : false,
+                dist : 0,
+                color : CreatureColor::new_from_vec([0,0,0]),
+                space_type : SpaceStates::BlankSpace,
+            };
+            self.creatures[c_idx].set_vision(vis);
+
             // Define variables for position we will be looking in
             let mut xpos = self.creatures[c_idx].position.x;
             let mut ypos = self.creatures[c_idx].position.y;
@@ -548,17 +557,7 @@ impl EnvironmentV1 {
 
                 // Check what type space is there
                 match self.positions[xpos][ypos] {
-                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {
-                        // Reset vision state as we haven't found anything in view yet
-                        let vis : CreatureVisionState = CreatureVisionState {
-                            obj_in_view : false,
-                            dist : 0,
-                            color : CreatureColor::new_from_vec([0,0,0]),
-                            space_type : SpaceStates::BlankSpace,
-                        };
-                        self.creatures[c_idx].set_vision(vis);
-                        // Continue here
-                    },
+                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {},
 
                     // Food space is in view
                     SpaceStates::FoodSpace => {
