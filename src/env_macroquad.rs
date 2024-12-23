@@ -24,14 +24,14 @@ pub const DEBUG_LEVEL : usize = 0;
 // Size of the board
 const SCREEN_SIZE_X : f32 = 700.0;
 const SCREEN_SIZE_Y : f32 = 700.0;
-const NUM_GRID_SQUARES_X : usize = 80;
-const NUM_GRID_SQUARES_Y : usize = 80;
+const NUM_GRID_SQUARES_X : usize = 50;
+const NUM_GRID_SQUARES_Y : usize = 50;
 
 
 // Default environment parameters
-const DEFAULT_START_CREATURES : usize = 250;
-const DEFAULT_START_FOOD : usize = 500;
-const DEFAULT_START_WALLS : usize = 250;
+const DEFAULT_START_CREATURES : usize = 150;
+const DEFAULT_START_FOOD : usize = 200;
+const DEFAULT_START_WALLS : usize = 150;
 
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
@@ -53,7 +53,7 @@ const CONTROL_PANEL_WIDTH : f32 = SCREEN_SIZE_X + PANEL_X_PADDING;
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 
 // Window Parameters
-const WINDOW_BAR_HEIGHT : f32 = 0.0;
+const WINDOW_BAR_HEIGHT : f32 = 20.0;
 const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y + CONTROL_PANEL_HEIGHT + PANEL_Y_PADDING;
 const WINDOW_WIDTH_PX : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH + PANEL_X_PADDING;
 

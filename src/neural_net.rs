@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// Possible error types to be returned from neural network functions
 #[derive(Debug, Deserialize, Serialize)]
 pub enum NeuralNetErrors {
-    OUTPUT_ACTIVATION_ERROR,    // Error finding the max activation value of an output neuron after evaluating network
+    OutputActivationError,    // Error finding the max activation value of an output neuron after evaluating network
 }
 
 /// Implements a simple generic neural network for use as a brain for creatures
@@ -95,7 +95,7 @@ T: Serialize,
         // Get values of output neurons and return the one that has the highest activation val
         let output_layer = &self.activations[self.num_layers - 1];
         let mut max_act: T = T::zero();
-        let mut max_act_node: Result<usize, NeuralNetErrors> = Err(NeuralNetErrors::OUTPUT_ACTIVATION_ERROR);
+        let mut max_act_node: Result<usize, NeuralNetErrors> = Err(NeuralNetErrors::OutputActivationError);
         for i in 0..output_layer.get_nrows() {
             let act = output_layer.get(i, 0);
             if  act >= max_act {

@@ -4,10 +4,6 @@
  * Created: 4/29/2022
  * Description: Includes all code that describes a single creature in the 2D sim
  * 
- * Notes:
- * Add orientation to creature state
- * Add color to creature statistics (r,g,b) value
- * Add vision that only looks at current orientation
  * ===============================================================================*/
 
 // Define external crates to use in this module
@@ -19,15 +15,18 @@ use serde::{Deserialize, Serialize};
 //===============================================================================
 pub const DEFAULT_ENERGY_LEVEL : usize = 40;
 pub const MAX_POSSIBLE_ENERGY : usize = 200;
-pub const MAX_POSSIBLE_AGE : usize = 200;
+pub const MAX_POSSIBLE_AGE : usize = 100;
 
 pub const DEFAULT_REPRODUCE_AGE : usize = 22;                // Default age at which creature will reproduce
 pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 40, 255];   // Default color each creature will be (blue)
 pub const KILLER_CREATURE_COLOR : [u8; 3] = [200, 0, 200];   // Color a creature will turn if it has killed (purple)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
-pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
 pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
+pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
                                                                             // Intent is that this should be greater than the starting energy, so that creatures only reproduce when they find food
+pub const DEFAULT_MOVE_ENERGY_COST : usize = 1;             // Default amount of energy it takes to move one space
+pub const DEFAULT_ROTATE_ENERGY_COST : usize = 1;           // Default amount of energy it takes to rotate
+pub const DEFAULT_KILL_ENERGY_COST : usize = 1;             // Default amount of energy it takes to perform a kill action
 
 
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
@@ -124,12 +123,18 @@ use crate::{neural_net::NeuralNet, SpaceStates};
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreatureParams {
     pub reproduce_energy_cost : usize,
+    pub move_energy_cost : usize,
+    pub rotate_energy_cost : usize,
+    pub kill_energy_cost : usize,
     pub starting_energy : usize,
 }
 impl CreatureParams {
     pub fn new() -> CreatureParams {
         return CreatureParams {
             reproduce_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
+            move_energy_cost : DEFAULT_MOVE_ENERGY_COST,
+            rotate_energy_cost : DEFAULT_ROTATE_ENERGY_COST,
+            kill_energy_cost : DEFAULT_KILL_ENERGY_COST,
             starting_energy : DEFAULT_ENERGY_LEVEL,
         }
     }
@@ -281,11 +286,6 @@ impl CreatureV1 {
         self.vision_state = vision;
     }
 
-    /// Set reproduction age
-    pub fn set_reproduction_age(&mut self, repro_age : usize) {
-        self.reproduction_age = repro_age;
-    }
-
     /// Kill this creature (another creature has hunted it)
     pub fn kill(&mut self) {
         self.energy = 0;
@@ -293,7 +293,7 @@ impl CreatureV1 {
         self.killed = true;
     }
 
-    /// Mark this creature as a killer (carnivore). This changes it's color to indicate to others that it's dangerous
+    /// Mark this creature as a killer (carnivore). This changes it's color a bit to indicate to others that it's dangerous
     pub fn set_killer(&mut self) {
         self.color.red = self.color.red.saturating_add(10);
         self.color.blue = self.color.blue.saturating_sub(10);
@@ -400,10 +400,12 @@ impl CreatureV1 {
             return CreatureActions::Stay;
         }
 
-        // Reduce the energy and increase age
-        if self.energy > 0 {
-            self.energy -= 1;
+        // Increase age until a max. If we've hit max, then die of old age
+        if self.age < MAX_POSSIBLE_AGE {
             self.age += 1;
+        } else {
+            self.is_alive = false;
+            return Stay;
         }
 
         // Before we even do any action eval, check to see whether creature should reproduce
@@ -432,15 +434,20 @@ impl CreatureV1 {
         // is not a rotation
         self.apply_rotation(action);
 
-        // If creature decides to reproduce, subtract reproduction energy cost
-        if action == Reproduce {
-            if self.energy >= self.params.reproduce_energy_cost {
-                self.energy -= self.params.reproduce_energy_cost;
-            } else {
-                // Creature is now dead
-                self.energy = 0;
-                action = Stay;
-            }
+
+        // Calculate new energy based on which action we decide to take. Different actions cost differing amounts
+        self.energy = match action {
+            Reproduce => self.energy.saturating_sub(self.params.reproduce_energy_cost),
+            MoveBackwards | MoveForwards | MoveLeft | MoveRight => self.energy.saturating_sub(self.params.move_energy_cost),
+            RotateCCW | RotateCW => self.energy.saturating_sub(self.params.rotate_energy_cost),
+            Kill => self.energy.saturating_sub(self.params.kill_energy_cost),
+            _ => self.energy,
+        };
+
+        // If we're out of energy, mark this creature dead and return Stay action
+        if self.energy == 0 {
+            self.is_alive = false;
+            action = Stay;
         }
 
         return action; 
@@ -509,9 +516,9 @@ pub struct Brain {
 // Define the number and size of internal layers in the brain neural net
 // (input/output will be overwritten by the constructor)
 const PLACEHOLDER_NUM_NODES : usize = 0;
-const BRAIN_V2_LAYER_SIZES : [usize; 5] = [PLACEHOLDER_NUM_NODES, 8, 8, 8, PLACEHOLDER_NUM_NODES]; // 3 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
-const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -10.0;  // Min initial value that a node will take
-const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 10.0;   // Max initial value that a node will take 
+const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 6, 6, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 6 neurons each. First/Last layer sizes will be specified by constructor
+const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -25.0;  // Min initial value that a node will take
+const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 25.0;   // Max initial value that a node will take 
 
 impl Brain {
 

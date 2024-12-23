@@ -144,7 +144,6 @@ impl EnvironmentV1 {
             // Set few parameters of the new creature
             let pos = temp_env.get_rand_blank_space();
             creature.set_position(pos.x, pos.y);
-            creature.set_reproduction_age(REPRODUCTION_AGE);
 
             // Set random initial orientation
             let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
