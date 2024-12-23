@@ -22,10 +22,10 @@ use macroquad::ui::{
 pub const DEBUG_LEVEL : usize = 0;
 
 // Size of the board
-const SCREEN_SIZE_X : f32 = 800.0;
-const SCREEN_SIZE_Y : f32 = 800.0;
-const NUM_GRID_SQUARES_X : usize = 100;
-const NUM_GRID_SQUARES_Y : usize = 100;
+const SCREEN_SIZE_X : f32 = 700.0;
+const SCREEN_SIZE_Y : f32 = 700.0;
+const NUM_GRID_SQUARES_X : usize = 80;
+const NUM_GRID_SQUARES_Y : usize = 80;
 
 
 // Default environment parameters
@@ -119,6 +119,7 @@ pub struct EnvMacroquad {
 
     // Assets
     background_texture : Texture2D, // Background image texture
+    background_options : DrawTextureParams,
 }
 
 
@@ -183,6 +184,14 @@ impl EnvMacroquad {
 
             // background_image
             background_texture : Texture2D::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)),
+            background_options : DrawTextureParams {
+                dest_size: Some(vec2(SCREEN_SIZE_X + PANEL_X_PADDING, SCREEN_SIZE_Y + PANEL_Y_PADDING)),
+                source: None,
+                rotation: 0.0,
+                flip_x: false,
+                flip_y: false,
+                pivot: None,
+            }
         };
 
         // Populate initial param strings with values from sim
@@ -223,7 +232,7 @@ impl EnvMacroquad {
     fn update_sim_display(&self) {
 
         // Draw background
-        draw_texture(&self.background_texture, 0.0, 0.0, WHITE);
+        draw_texture_ex(&self.background_texture, 0.0, 0.0, WHITE, self.background_options.clone());
 
         // For each simulation space on the board, update with proper piece
         for x in 0..self.env.params.env_x_size {

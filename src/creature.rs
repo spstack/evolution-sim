@@ -62,9 +62,10 @@ pub enum CreatureInputs {
     VisionColorRed,     // Red component of the color of the object the creature can see [0, 255]
     VisionColorGreen,   // Green component of the color of the object the creature can see [0, 255]
     VisionColorBlue,    // Blue component of the color of the object the creature can see [0, 255]
-    // TODO: Add orientation
+    LastAction,         // The last action that the creature took
+    Orientation,        // Which way th creature is facing
 }
-const ENABLED_CREATURE_INPUTS : [CreatureInputs; 6] = [Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue];
+const ENABLED_CREATURE_INPUTS : [CreatureInputs; 8] = [Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue, Orientation, LastAction];
 
 #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub struct CreaturePosition {
@@ -350,6 +351,8 @@ impl CreatureV1 {
                 VisionColorRed => self.brain.set_input(input_neuron_idx, vis_red),
                 VisionColorGreen => self.brain.set_input(input_neuron_idx, vis_green),
                 VisionColorBlue => self.brain.set_input(input_neuron_idx, vis_blue),
+                LastAction => self.brain.set_input(input_neuron_idx,  self.action_to_f32(self.last_action)),
+                Orientation => self.brain.set_input(input_neuron_idx, self.orientation_to_f32(self.orientation)),
                 _ => {
                     if DEBUG_LEVEL > 0 {
                         println!("Warning: unused/unpopulated input neuron {:?} at idx {}", neuron_type, input_neuron_idx);
@@ -359,6 +362,33 @@ impl CreatureV1 {
         } 
     }
 
+    /// Function to tranlate an action into a float that is consumed by the neural net
+    fn action_to_f32(&self, action : CreatureActions) -> f32 {
+
+        // These are a  little random, but I guss trying to make similar actions have similar values. Not sure that's the
+        // right way to go about it tho
+        return match action {
+            CreatureActions::Stay => 0.0,
+            CreatureActions::MoveForwards => 2.0,
+            CreatureActions::MoveBackwards => 3.0,
+            CreatureActions::MoveLeft => 4.0,
+            CreatureActions::MoveRight => 5.0,
+            CreatureActions::RotateCCW => 10.0,
+            CreatureActions::RotateCW => 11.0,
+            CreatureActions::Reproduce => 15.0,
+            CreatureActions::Kill => 20.0,
+        }
+    }
+
+    /// Function to tranlate the orientation into a float that is consumed by the neural net
+    fn orientation_to_f32(&self, orientation : CreatureOrientation) -> f32 {
+        return match orientation {
+            CreatureOrientation::Up => 0.0,
+            CreatureOrientation::Left => 1.0,
+            CreatureOrientation::Down => 2.0,
+            CreatureOrientation::Right => 3.0,
+        }
+    }
 
     // Perform next action (evaluate neural network and decide on next action based on output)
     // 
@@ -479,7 +509,7 @@ pub struct Brain {
 // Define the number and size of internal layers in the brain neural net
 // (input/output will be overwritten by the constructor)
 const PLACEHOLDER_NUM_NODES : usize = 0;
-const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 4, 4, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
+const BRAIN_V2_LAYER_SIZES : [usize; 5] = [PLACEHOLDER_NUM_NODES, 8, 8, 8, PLACEHOLDER_NUM_NODES]; // 3 internal layers with 8 neurons each. First/Last layer sizes will be specified by constructor
 const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -10.0;  // Min initial value that a node will take
 const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 10.0;   // Max initial value that a node will take 
 
