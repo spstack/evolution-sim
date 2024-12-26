@@ -40,7 +40,7 @@ pub enum EnvErrors {
 }
 
 /// Enumeration that defines the possible states 
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SpaceStates {
     BlankSpace,                 // Space is blank
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
@@ -100,6 +100,9 @@ pub struct EnvironmentV1 {
     pub num_blank : usize,              // Number of blank spaces on the board
     pub num_walls : usize,              // Number of wall spaces on the board (should be the same as the start parameter, but used for sanity check)
     pub num_total_creatures : usize,    // Number of total creatures created throughout sim
+
+    pub num_kills : usize,              // Number of creatures killed
+    pub num_natural_deaths: usize,      // Number of creatures that've died of "old age"
 }
 
 
@@ -128,6 +131,8 @@ impl EnvironmentV1 {
             num_walls : 0,
             num_blank : num_spaces,
             num_total_creatures : in_params.num_start_creatures,
+            num_kills : 0,
+            num_natural_deaths : 0,
         };
 
         // Fill in random spaces with food
@@ -316,7 +321,6 @@ impl EnvironmentV1 {
                                     // Give creature the immediate energy
                                     self.creatures[creature_idx].eat_food(self.params.energy_per_food_piece);
                                     self.creatures[creature_idx].set_killer();
-
                                 }
                             },
                             _ => (),
@@ -485,8 +489,10 @@ impl EnvironmentV1 {
                 // if it was killed, the hunting creature already got energy, so don't leave food behind
                 if creature.was_killed() {
                     self.positions[pos.x][pos.y] = SpaceStates::FightSpace;
+                    self.num_kills += 1;
                 } else {
                     self.positions[pos.x][pos.y] = SpaceStates::FoodSpace;
+                    self.num_natural_deaths += 1;
                 }
 
                 // Mark this dude for removal

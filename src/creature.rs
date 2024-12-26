@@ -73,7 +73,7 @@ pub struct CreaturePosition {
 }
 
 /// Possible orientations that creature can point
-#[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Deserialize, Serialize)]
 pub enum CreatureOrientation {
     Up,
     Down,

@@ -7,6 +7,7 @@
 use crate::creature::*;
 use crate::environment;
 use crate::environment::*;
+use std::io::Read;
 use std::io::Write;
 use std::fs::File;
 use macroquad::prelude::*;
@@ -22,9 +23,9 @@ use macroquad::ui::{
 pub const DEBUG_LEVEL : usize = 0;
 
 // Size of the board
-const SCREEN_SIZE_X : f32 = 700.0;
+const SCREEN_SIZE_X : f32 = 950.0;
 const SCREEN_SIZE_Y : f32 = 700.0;
-const NUM_GRID_SQUARES_X : usize = 50;
+const NUM_GRID_SQUARES_X : usize = 70;
 const NUM_GRID_SQUARES_Y : usize = 50;
 
 
@@ -37,24 +38,28 @@ const DEFAULT_START_WALLS : usize = 150;
 const STATS_PANEL_WIDTH : f32 = 400.0;
 const PANEL_X_PADDING : f32 = 10.0;
 const PANEL_Y_PADDING : f32 = 10.0;
-const STATS_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
+const STATS_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.5;
 const STATS_BACKGROUND_COLOR : Color = Color {r: 0.8, g: 0.8, b:0.8, a: 1.0};
 const MAX_CREATURES_STATS_TO_DISPLAY : usize = 25;
 
 // Param panel params
 const PARAM_PANEL_WIDTH : f32 = 400.0;
-const PARAM_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.0;
+const PARAM_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.5;
+
+// Control panel 1 (that sits on the right ide of the display)
+const CONTROL1_PANEL_WIDTH : f32 = 400.0;
+const CONTROL1_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 5.0;
 
 // Control panel params (sits below the main board)
-const CONTROL_PANEL_HEIGHT : f32 = 125.0 + PANEL_Y_PADDING;
-const CONTROL_PANEL_WIDTH : f32 = SCREEN_SIZE_X + PANEL_X_PADDING;
+const CONTROL2_PANEL_HEIGHT : f32 = 125.0 + PANEL_Y_PADDING;
+const CONTROL2_PANEL_WIDTH : f32 = SCREEN_SIZE_X + PANEL_X_PADDING;
 
 // Creature display params
 const ORIENTATION_LINE_THICKNESS : f32 = 2.0;
 
 // Window Parameters
 const WINDOW_BAR_HEIGHT : f32 = 20.0;
-const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y + CONTROL_PANEL_HEIGHT + PANEL_Y_PADDING;
+const WINDOW_HEIGHT_PX : f32 = WINDOW_BAR_HEIGHT + SCREEN_SIZE_Y + CONTROL2_PANEL_HEIGHT + PANEL_Y_PADDING;
 const WINDOW_WIDTH_PX : f32 = SCREEN_SIZE_X + STATS_PANEL_WIDTH + PANEL_X_PADDING;
 
 // Sim defaults
@@ -79,6 +84,8 @@ struct SimParameters {
     pub max_offspring_per_reproduce : String,   // Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : String,                 // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
     pub avg_new_food_per_day : String,          // Average number of new food pieces added to the environment per day
+
+    pub save_load_filename : String,            // Name of file to save/load from
 }
 
 /// Enum defining state of the simulation (stopped/running)
@@ -110,12 +117,17 @@ pub struct EnvMacroquad {
     stats_panel_y_pos : f32,
     param_panel_x_pos : f32,
     param_panel_y_pos : f32,
+    control1_panel_x_pos : f32,
+    control1_panel_y_pos : f32,
     control_panel_x_pos : f32,
     control_panel_y_pos : f32,
 
     // Window params
     screen_width_pixels : f32,      // X Size of the environment in pixels
     screen_height_pixels : f32,     // Y size of the environment in pixels
+
+    // Style skin
+    default_skin : Skin,            // default sytle for the UI
 
     // Assets
     background_texture : Texture2D, // Background image texture
@@ -155,6 +167,7 @@ impl EnvMacroquad {
                 max_offspring_per_reproduce : String::new(),
                 mutation_prob : String::new(),
                 avg_new_food_per_day : String::new(),
+                save_load_filename : String::new(),
             },
 
             // Generate the environment given the parameters
@@ -170,17 +183,23 @@ impl EnvMacroquad {
             grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
             grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
 
-            // Set position of stats panel
+            // Set position of all info panels 
             stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
             stats_panel_y_pos : 0.0,
             param_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
-            param_panel_y_pos : STATS_PANEL_HEIGHT,
+            param_panel_y_pos : STATS_PANEL_HEIGHT + CONTROL1_PANEL_HEIGHT,
+            control1_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,
+            control1_panel_y_pos : STATS_PANEL_HEIGHT,
+
             control_panel_x_pos : 0.0,
-            control_panel_y_pos : SCREEN_SIZE_X + PANEL_Y_PADDING,
+            control_panel_y_pos : SCREEN_SIZE_Y + PANEL_Y_PADDING,
 
             // Set total size of the window for internal tracking
             screen_width_pixels : WINDOW_WIDTH_PX,
             screen_height_pixels : WINDOW_HEIGHT_PX,
+
+            // Set default skin to default from macroquad (will be overwritten later)
+            default_skin : Skin {..root_ui().default_skin()},
 
             // background_image
             background_texture : Texture2D::from_file_with_format(include_bytes!("../data/grass_texture.png"), Some(ImageFormat::Png)),
@@ -222,10 +241,26 @@ impl EnvMacroquad {
         }
     }
 
-    /// Save the 
+    /// Save the full current environment to a file
     fn save_environment(&self, filename : String) {
         let mut json_file = File::create(filename).unwrap();
         json_file.write(self.env.to_json().as_bytes()).expect("Error writing environment to file!");
+    }
+
+    /// Load the full environment and creatures from json file
+    fn load_environmnt(&mut self, filename : &str) {
+        let res = File::open(filename);
+        let mut file : File;
+        match res {
+            Err(e) => {
+                println!("Error could not open file {}. Error = {e}", filename);
+                return;
+            },
+            Ok(f) => file = f,
+        }
+        let mut json_contents : String = String::new();
+        let _ = file.read_to_string(&mut json_contents);
+        self.env = serde_json::from_str(&json_contents).unwrap();
     }
 
     /// Update the simulation env board
@@ -252,23 +287,33 @@ impl EnvMacroquad {
         }
     }
 
-    /// Update the statistics panel
-    fn update_stats_panel(&mut self) {
-        const HEADER_FONT_SIZE_PX : f32 = 14.0;
-        const MAIN_FONT_SIZE_PX : f32 = 10.0;
-        let mut cur_y_pos_px = self.stats_panel_y_pos + HEADER_FONT_SIZE_PX;
-
+    /// Set the default "skin" (UI style) for macroquad
+    fn set_default_skin(&mut self) {
         // Define style of the stats panel first
         let label_style = root_ui()
             .style_builder()
             .text_color(Color::from_rgba(0, 0,0, 255))
             .font_size(14)
             .build();
-        let stats_skin = Skin {
+        let button_style = root_ui()
+            .style_builder()
+            .color(Color {r: 0.5, g: 0.5, b: 0.5, a: 1.0})
+            .color_hovered(Color {r: 0.7, g: 0.7, b: 0.7, a: 1.0})
+            .background_margin(RectOffset::new(40.0, 40.0, 5.0, 5.0))
+            .font_size(16)
+            .build();
+        self.default_skin = Skin {
             label_style : label_style,
+            button_style : button_style,
             ..root_ui().default_skin()
         };
-        root_ui().push_skin(&stats_skin);
+
+        root_ui().push_skin(&self.default_skin);
+    }
+
+    /// Update the statistics panel
+    fn update_stats_panel(&mut self) {
+        const HEADER_FONT_SIZE_PX : f32 = 14.0;
 
         // Define the content of the stats panel
         root_ui().window(hash!(), vec2(self.stats_panel_x_pos, self.stats_panel_y_pos), vec2(STATS_PANEL_WIDTH, STATS_PANEL_HEIGHT), |ui| {
@@ -286,64 +331,56 @@ impl EnvMacroquad {
             ui.label(None, &stat_txt); 
             stat_txt = format!("{:22} {:<12}", "NUM WALLS:", self.env.num_walls);
             ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "NUM KILLS:", self.env.num_kills);
+            ui.label(None, &stat_txt); 
+            stat_txt = format!("{:22} {:<12}", "NUM NATURAL DEATHS:", self.env.num_natural_deaths);
+            ui.label(None, &stat_txt); 
 
-            ui.label(None, "\n"); 
-            ui.separator();
-
-            let header_str = format!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
-            ui.label(None, &header_str);
-
-            for creature_idx in 0..self.env.creatures.len() {
-                let creature = &self.env.creatures[creature_idx];
-                let creature_str = format!("{:<12} {:<12} {:<12} {:<15?} ", creature.id, creature.age, creature.energy, creature.last_action);
-                ui.label(None, &creature_str);
-
-                if creature_idx > MAX_CREATURES_STATS_TO_DISPLAY {
-                    break;
+            // Get info on the space the mouse is hovering over
+            ui.label(None, "");
+            ui.label(None, "SPACE INFO:\n");
+            let (mouse_x, mouse_y) = mouse_position();
+            let env_x = (mouse_x / self.grid_x_size) as usize;
+            let env_y = (mouse_y / self.grid_y_size) as usize;
+            if env_x < self.env.params.env_x_size && env_y < self.env.params.env_y_size {
+                let space_type = self.env.positions[env_x][env_y];
+                ui.label(None, format!(" Space X:{} Y:{}    {:?}", env_x, env_y, space_type).as_str());
+                match space_type {
+                    SpaceStates::CreatureSpace(c_id) => {
+                        let c_idx = self.env.get_creature_idx_from_id(c_id).unwrap();
+                        let creature = &self.env.creatures[c_idx];
+                        ui.label(None, format!("  Creature ID:      {}", creature.id).as_str());
+                        ui.label(None, format!("  Age:              {}", creature.age).as_str());
+                        ui.label(None, format!("  Energy:           {}", creature.energy).as_str());
+                        ui.label(None, format!("  Color (r, g, b):  {}, {}, {}", creature.color.red, creature.color.green, creature.color.blue).as_str());
+                        ui.label(None, format!("  Last Action:      {:?}", creature.last_action).as_str());
+                        ui.label(None, format!("  Orientation:      {:?}", creature.orientation).as_str());
+                        ui.label(None, format!("  Vision (r,g,b, dist): {}, {}, {}, {}", 
+                            creature.vision_state.color.red,
+                            creature.vision_state.color.green,
+                            creature.vision_state.color.blue,
+                            creature.vision_state.dist,
+                            ).as_str());
+                    },
+                    _ => {},
                 }
             }
+
         });
-
-        // Undo the UI skin, so it can be set by another panel
-        root_ui().pop_skin();
-
+        
     }
 
+    /// Update the control panel on the right side of the window
+    fn update_right_control_panel(&mut self) {
+        root_ui().window(hash!(), vec2(self.control1_panel_x_pos, self.control1_panel_y_pos), vec2(CONTROL1_PANEL_WIDTH, CONTROL1_PANEL_HEIGHT), |ui| {
+            ui.label(None, "CONTROL");
 
-    /// Create/update the control panel in the UI
-    fn update_control_panel(&mut self) {
-
-        // Define the content of the control panel
-        root_ui().window(hash!(), vec2(self.control_panel_x_pos, self.control_panel_y_pos), vec2(CONTROL_PANEL_WIDTH, CONTROL_PANEL_HEIGHT), |ui| {
-            let temp_skin = Skin {
-                label_style : ui.style_builder().font_size(16).build(),
-                button_style : ui.style_builder()
-                    .color(Color {r: 0.5, g: 0.5, b: 0.5, a: 1.0})
-                    .color_hovered(Color {r: 0.7, g: 0.7, b: 0.7, a: 1.0})
-                    .background_margin(RectOffset::new(37.0, 37.0, 5.0, 5.0))
-                    .font_size(16)
-                    .build(),
-                ..ui.default_skin()
-            };
-            ui.push_skin(&temp_skin);
-
-            ui.label(None, "CONTROL PANEL"); 
-            ui.label(None, "");
-
+            // CONTROL PANEL
             if ui.button(None, "START/STOP") {
                 self.state = match self.state {
                     SimState::RUNNING => SimState::STOPPED,
                     SimState::STOPPED => SimState::RUNNING,
                     SimState::FASTFORWARD => SimState::STOPPED,
-                }
-            }
-
-            // Jump to a particular step button
-            ui.same_line(0.0);
-            if ui.button(None, "JUMP TO STEP") {
-                // If target step is reasonable, then enter fast forward mode
-                if self.step_to_jump_to > self.env.time_step && self.step_to_jump_to > 0 && self.step_to_jump_to < 1000000 {
-                    self.state = SimState::FASTFORWARD;
                 }
             }
 
@@ -355,17 +392,48 @@ impl EnvMacroquad {
                 Ok(step_val) => self.step_to_jump_to = step_val,
             }
 
+            // Jump to a particular step button
+            if ui.button(None, "JUMP TO STEP") {
+                // If target step is reasonable, then enter fast forward mode
+                if self.step_to_jump_to > self.env.time_step && self.step_to_jump_to > 0 && self.step_to_jump_to < 1000000 {
+                    self.state = SimState::FASTFORWARD;
+                }
+            }
+            
+        });
+
+
+    }
+
+    /// Create/update the control panel in the UI
+    fn update_bottom_control_panel(&mut self) {
+
+        // Define the content of the control panel
+        root_ui().window(hash!(), vec2(self.control_panel_x_pos, self.control_panel_y_pos), vec2(CONTROL2_PANEL_WIDTH, CONTROL2_PANEL_HEIGHT), |ui| {
+            ui.label(None, "CONTROL PANEL"); 
+            ui.label(None, "");
+
+
+            // Text box that gets step to jump to
+            ui.input_text(hash!(), "Filename", &mut self.params.save_load_filename);
+            let res = self.step_to_jump_to_str.parse::<usize>();
+            match res {
+                Err(_e) => self.step_to_jump_to = 0,
+                Ok(step_val) => self.step_to_jump_to = step_val,
+            }
+
             // Button to save the current environment as a json file
             if ui.button(None, "SAVE ENVIRONMENT") {
-                self.save_environment("data/saved_env.json".to_string());
+                self.save_environment(self.params.save_load_filename.clone());
             }
             // Button to save the current environment as a json file
             ui.same_line(0.0);
             if ui.button(None, "LOAD ENVIRONMENT") {
-                // TODO: implement
+                let temp_filename = self.params.save_load_filename.clone();
+                self.load_environmnt(temp_filename.as_str());
             }
 
-            ui.pop_skin();
+            // ui.pop_skin();
         });
     }
 
@@ -396,17 +464,23 @@ impl EnvMacroquad {
     pub fn update_display(&mut self) {
         clear_background(GRAY);
 
+        // Set style
+        self.set_default_skin();
+
         // Update the main board
         self.update_sim_display();
 
         // Update statistics on the side
         self.update_stats_panel(); 
 
+        // Update the control panel on the right side
+        self.update_right_control_panel();
+
         // Update the simulation start parameters panel
         self.update_sim_param_panel();
 
-        // Update the control panel
-        self.update_control_panel();
+        // Update the control panel below the environment display
+        self.update_bottom_control_panel();
     }
 
     /// Draw a single creature square to the specified location on the screen

@@ -4,6 +4,10 @@
  * Author: Scott Stack
  * Created: 4/29/2022
  * Description: main application entry point
+ * 
+ * Features want to implement
+ *  - generate walls in more interesting way (connectd walls)
+ *  - allow saving individual creatures
  * ===============================================================================*/
 mod linalg;
 mod neural_net;
