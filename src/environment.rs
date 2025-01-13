@@ -5,8 +5,12 @@
  * Description: Implements environment features that the creature inhabits
  * ===============================================================================*/
 use crate::creature::*;
+use macroquad::math::Circle;
 use serde::{Deserialize, Serialize};
 use rand::Rng;
+use std::io::Read;
+use std::io::Write;
+use std::fs::File;
 
 //===============================================================================
 // CONSTANTS
@@ -49,6 +53,18 @@ pub enum SpaceStates {
     FightSpace,                 // Indicator that a creature was killed in this space (temporary)
 }
 
+
+/// Struct that's used to specify what parts of the environment should be loaded
+/// from a JSON file
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub struct JsonEnvLoadParams {
+    pub load_all : bool,        // load everything from JSON file (ignores all other options)
+
+    pub load_parameters : bool, // Overwrite the environment parameters with what's in the JSON file
+    pub load_creatures : bool,  // load creatures everything from JSON file
+    pub load_walls : bool,      // load wall spaces from file
+    pub load_food : bool,       // load food spaces from file
+}
 
 /// Structure that defines all input parameters to a new environment
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -179,6 +195,55 @@ impl EnvironmentV1 {
     pub fn to_json(&self) -> String {
         let json_string = serde_json::to_string_pretty(&self).unwrap();
         return json_string;
+    }
+
+    /// Load environment parameters and spaces from json file
+    pub fn load_from_json(&mut self, json_file : String, load_ops : &JsonEnvLoadParams) {
+        let res = File::open(&json_file);
+        let mut file : File;
+        match res {
+            Err(e) => {
+                println!("Error could not open file {}. Error = {e}", &json_file);
+                return;
+            },
+            Ok(f) => file = f,
+        }
+
+        // Read all contents into temporary string
+        let mut json_contents : String = String::new();
+        let _ = file.read_to_string(&mut json_contents);
+
+        // Create a temporary instantiation of the environment, so we can pull various things from it
+        let temp_env_res : Result<EnvironmentV1, serde_json::Error>  = serde_json::from_str(&json_contents); 
+        let temp_env : EnvironmentV1;
+        match temp_env_res {
+            Err(e) => {
+                println!("Error: Could not create `Environment` from JSON. Might mean JSON is incompatible with current version, or is corrupted");
+                println!("Full Error Msg: {e}");
+                return;
+            }
+            Ok(val) => temp_env = val,
+        }
+
+        // load different components of the environment based on what options are specified
+        if load_ops.load_parameters {
+            self.params = temp_env.params.clone();
+        }
+        if load_ops.load_creatures {
+            self.remove_all_creatures();
+            self.creatures = temp_env.creatures.clone();
+            self.update_creature_positions();
+        }
+        if load_ops.load_walls {
+            self.remove_all_walls();
+            self.add_walls_from_positions(&temp_env.positions);
+        }
+        if load_ops.load_food {
+            self.remove_all_food();
+            self.add_food_from_positions(&temp_env.positions);
+        }
+
+
     }
 
     /// Main interface to run a certain number of simulation steps
@@ -475,6 +540,94 @@ impl EnvironmentV1 {
         self.positions[position.x][position.y] = SpaceStates::WallSpace;
     }
 
+    /// Remove all wall spaces from position array
+    fn remove_all_walls(&mut self) {
+        for x in 0..self.positions.len() {
+            for y in 0..self.positions[0].len() {
+                if self.positions[x][y] == SpaceStates::WallSpace {
+                    self.positions[x][y] = SpaceStates::BlankSpace;
+                } 
+            }
+        } 
+        self.num_walls = 0;
+    }
+
+    /// Remove all creature spaces from position array
+    fn remove_all_creatures(&mut self) {
+        for x in 0..self.positions.len() {
+            for y in 0..self.positions[0].len() {
+                match self.positions[x][y] {
+                    SpaceStates::CreatureSpace(_c) => self.positions[x][y] = SpaceStates::BlankSpace,
+                    _ => (), // do nothing
+                }
+            }
+        } 
+        // Update num creatures from creatures array
+        self.num_creatures = 0;
+    }
+
+    /// Remove all food spaces from position array
+    fn remove_all_food(&mut self) {
+        for x in 0..self.positions.len() {
+            for y in 0..self.positions[0].len() {
+                match self.positions[x][y] {
+                    SpaceStates::FoodSpace => self.positions[x][y] = SpaceStates::BlankSpace,
+                    _ => (), // do nothing
+                }
+            }
+        } 
+        // Update num food count
+        self.num_food = 0;
+    }
+
+    /// Update the position matrix with all food spaces from the provided "positions" matrix
+    fn add_food_from_positions(&mut self, new_positions : &Vec<Vec<SpaceStates>>) {
+        let mut food_count : usize = 0;
+        for x in 0..self.positions.len() {
+            for y in 0..self.positions[0].len() {
+                match new_positions[x][y] {
+                    SpaceStates::FoodSpace => {
+                        self.positions[x][y] = SpaceStates::FoodSpace;
+                        food_count += 1;
+                    }
+                    _ => (), // do nothing
+                }
+            }
+        } 
+        // Update num food count
+        self.num_food = food_count;
+    }
+
+    /// Update the position matrix with all food spaces from the provided "positions" matrix
+    fn add_walls_from_positions(&mut self, new_positions : &Vec<Vec<SpaceStates>>) {
+        let mut wall_count : usize = 0;
+        for x in 0..self.positions.len() {
+            for y in 0..self.positions[0].len() {
+                match new_positions[x][y] {
+                    SpaceStates::WallSpace => {
+                        self.positions[x][y] = SpaceStates::WallSpace;
+                        wall_count += 1;
+                    }
+                    _ => (), // do nothing
+                }
+            }
+        } 
+        // Update num food count
+        self.num_walls = wall_count;
+    }
+
+    /// Update the position matrix with create info in the creatures vector. This is only to be used
+    /// when loading all new creatures from a JSON file into the environment
+    fn update_creature_positions(&mut self) {
+        for c_idx in 0..self.creatures.len() {
+            let x = self.creatures[c_idx].position.x;
+            let y = self.creatures[c_idx].position.y;
+            self.positions[x][y] = SpaceStates::CreatureSpace(self.creatures[c_idx].id);
+        }
+
+        self.num_creatures = self.creatures.len();
+    }
+
     /// Go through list of creatures and remove the ones that have died from the environment
     fn remove_dead_creatures(&mut self) {
         let mut to_remove : Vec<usize> = Vec::new(); // vector if indices to remove
@@ -702,7 +855,7 @@ impl EnvironmentV1 {
 
         return CreaturePosition {
             x : found_x,
-            y: found_y,
+            y : found_y,
         }
     }
 
