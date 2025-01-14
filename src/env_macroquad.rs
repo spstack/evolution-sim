@@ -7,7 +7,6 @@
 use crate::creature::*;
 use crate::environment;
 use crate::environment::*;
-use std::io::Read;
 use std::io::Write;
 use std::fs::File;
 use macroquad::prelude::*;
@@ -72,7 +71,6 @@ const MACROQUAD_FRAME_TIME_S : f64 = 0.1;    // Time between sim steps for macro
 
 /// Parameters for this simulation
 struct SimParameters {
-    
 
     // String versions of the parameters for storing the text box versions
     pub env_x_size : String,                    // X size of the sim in "spaces"
@@ -96,6 +94,14 @@ pub enum SimState {
     FASTFORWARD,    // Fast-forwarding to a target step in the simulation
 }
 
+/// Can specify which parts of an environment to load from file
+#[derive(Copy, Clone)]
+pub struct LoadOptions {
+    load_params : bool,
+    load_creatures : bool,
+    load_walls : bool,
+    load_food : bool,
+}
 
 /// Environment
 pub struct EnvMacroquad {
@@ -107,6 +113,9 @@ pub struct EnvMacroquad {
     last_sim_update : f64,      // Time of last simulation update used when running to determine whether we should update
     step_to_jump_to : usize,    // Which step in the simulation we should jump to (if state is FASTFORWARD)
     step_to_jump_to_str : String, // String version of `step_to_jump_to` variable that holds
+
+    // Data used by UI
+    load_opts : LoadOptions,    // Options used when loading environment from a file
 
     // Environment derived parameters
     grid_x_size : f32,              // X size of a single grid square in pixels
@@ -179,6 +188,14 @@ impl EnvMacroquad {
             step_to_jump_to : 0,
             step_to_jump_to_str : String::new(),
 
+            // UI data
+            load_opts : LoadOptions {
+                load_params : false,
+                load_creatures : false,
+                load_walls : false,
+                load_food : false,
+            },
+
             // Environment display params
             grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
             grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
@@ -243,24 +260,30 @@ impl EnvMacroquad {
 
     /// Save the full current environment to a file
     fn save_environment(&self, filename : String) {
-        let mut json_file = File::create(filename).unwrap();
+        let json_file_res = File::create(&filename);
+        let mut json_file : File;
+        match json_file_res {
+            Err(e) => {
+                println!("Error: could not load file {}. Error {e}", &filename);
+                return;
+            },
+            Ok(f) => json_file = f,
+        }
+
         json_file.write(self.env.to_json().as_bytes()).expect("Error writing environment to file!");
     }
 
     /// Load the full environment and creatures from json file
     fn load_environmnt(&mut self, filename : &str) {
-        let res = File::open(filename);
-        let mut file : File;
-        match res {
-            Err(e) => {
-                println!("Error could not open file {}. Error = {e}", filename);
-                return;
-            },
-            Ok(f) => file = f,
-        }
-        let mut json_contents : String = String::new();
-        let _ = file.read_to_string(&mut json_contents);
-        self.env = serde_json::from_str(&json_contents).unwrap();
+        let load_opts : JsonEnvLoadParams = JsonEnvLoadParams {
+            load_all : false,
+            load_parameters : self.load_opts.load_params,
+            load_creatures : self.load_opts.load_creatures,
+            load_food : self.load_opts.load_food,
+            load_walls : self.load_opts.load_walls,
+        };
+
+        self.env.load_from_json(filename, &load_opts);
     }
 
     /// Update the simulation env board
@@ -407,31 +430,40 @@ impl EnvMacroquad {
 
     /// Create/update the control panel in the UI
     fn update_bottom_control_panel(&mut self) {
+        let text_height_px : f32 = 22.0;
 
         // Define the content of the control panel
         root_ui().window(hash!(), vec2(self.control_panel_x_pos, self.control_panel_y_pos), vec2(CONTROL2_PANEL_WIDTH, CONTROL2_PANEL_HEIGHT), |ui| {
-            ui.label(None, "CONTROL PANEL"); 
-            ui.label(None, "");
+            ui.label(Vec2{x: 5., y: 5.}, "CONTROL PANEL"); 
+            ui.label(None, ""); 
 
-
-            // Text box that gets step to jump to
-            ui.input_text(hash!(), "Filename", &mut self.params.save_load_filename);
-            let res = self.step_to_jump_to_str.parse::<usize>();
-            match res {
-                Err(_e) => self.step_to_jump_to = 0,
-                Ok(step_val) => self.step_to_jump_to = step_val,
-            }
+            // Check boxes for specifying what to load - note I can't figure out the positioning of these...no idea how this is working, but it looks OK
+            ui.same_line(0.);
+            ui.checkbox(hash!(), "Load Parameters", &mut self.load_opts.load_params);
+            ui.same_line(0.);
+            ui.checkbox(hash!(), "Load Creatures", &mut self.load_opts.load_creatures);
+            ui.same_line(0.);
+            ui.checkbox(hash!(), "Load Walls", &mut self.load_opts.load_walls);
+            ui.same_line(0.);
+            ui.checkbox(hash!(), "Load Food", &mut self.load_opts.load_food);
 
             // Button to save the current environment as a json file
-            if ui.button(None, "SAVE ENVIRONMENT") {
+            if ui.button(Vec2{x : 0., y: text_height_px * 3.0}, "SAVE ENVIRONMENT") {
                 self.save_environment(self.params.save_load_filename.clone());
             }
             // Button to save the current environment as a json file
-            ui.same_line(0.0);
-            if ui.button(None, "LOAD ENVIRONMENT") {
+            if ui.button(Vec2{x : 200.0, y: text_height_px * 3.0}, "LOAD ENVIRONMENT") {
                 let temp_filename = self.params.save_load_filename.clone();
                 self.load_environmnt(temp_filename.as_str());
             }
+
+            // Text box that gets file name to load/save
+            widgets::InputText::new(hash!())
+                .position(Vec2{x: self.control_panel_x_pos + 5., y: self.control_panel_y_pos + text_height_px * 1.4})
+                .label("Filename")
+                .size(Vec2 { x: CONTROL2_PANEL_WIDTH / 1.5, y: text_height_px })
+                .ui(ui, &mut self.params.save_load_filename);
+
 
             // ui.pop_skin();
         });
@@ -546,7 +578,7 @@ impl EnvMacroquad {
 
         // Parse the text to make sure that at least works
         temp_params.env_x_size = self.params.env_x_size.parse::<usize>().expect("Error parsing env_x_size");
-        temp_params.env_y_size = self.params.env_x_size.parse::<usize>().expect("Error parsing env_y_size");
+        temp_params.env_y_size = self.params.env_y_size.parse::<usize>().expect("Error parsing env_y_size");
         temp_params.num_start_creatures = self.params.num_start_creatures.parse::<usize>().expect("Error parsing num_start_creatures");
         temp_params.num_start_food = self.params.num_start_food.parse::<usize>().expect("Error parsing num_start_food");
         temp_params.num_start_walls = self.params.num_start_walls.parse::<usize>().expect("Error parsing num_start_walls");

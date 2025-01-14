@@ -5,7 +5,6 @@
  * Description: Implements environment features that the creature inhabits
  * ===============================================================================*/
 use crate::creature::*;
-use macroquad::math::Circle;
 use serde::{Deserialize, Serialize};
 use rand::Rng;
 use std::io::Read;
@@ -198,7 +197,7 @@ impl EnvironmentV1 {
     }
 
     /// Load environment parameters and spaces from json file
-    pub fn load_from_json(&mut self, json_file : String, load_ops : &JsonEnvLoadParams) {
+    pub fn load_from_json(&mut self, json_file : &str, load_ops : &JsonEnvLoadParams) {
         let res = File::open(&json_file);
         let mut file : File;
         match res {
@@ -227,7 +226,18 @@ impl EnvironmentV1 {
 
         // load different components of the environment based on what options are specified
         if load_ops.load_parameters {
+
+            // If env size parameters changed, we have to re-size the board. Create a new blank board
+            if temp_env.params.env_x_size != self.params.env_x_size || temp_env.params.env_y_size != self.params.env_y_size {
+                if DEBUG_LEVEL > 0 {
+                    println!("Warning: New environment is not the same size as previous... clearing the board");
+                }
+                self.positions = vec![vec![SpaceStates::BlankSpace; temp_env.params.env_y_size]; temp_env.params.env_x_size];
+            }
+
+            // Re-write the parameters
             self.params = temp_env.params.clone();
+
         }
         if load_ops.load_creatures {
             self.remove_all_creatures();
@@ -601,6 +611,13 @@ impl EnvironmentV1 {
     /// Update the position matrix with all food spaces from the provided "positions" matrix
     fn add_walls_from_positions(&mut self, new_positions : &Vec<Vec<SpaceStates>>) {
         let mut wall_count : usize = 0;
+
+        // Ensure that new positions are same size
+        if new_positions.len() != self.params.env_x_size || new_positions[0].len() != self.params.env_y_size {
+            println!("Warning: New environment ({}, {}) is not the same size as existing ({}, {}) ! Nothing done...", new_positions.len(), new_positions[0].len(), self.params.env_x_size, self.params.env_y_size);
+            return;
+        }
+
         for x in 0..self.positions.len() {
             for y in 0..self.positions[0].len() {
                 match new_positions[x][y] {
