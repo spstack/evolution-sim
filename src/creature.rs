@@ -365,7 +365,7 @@ impl CreatureV1 {
     /// Function to tranlate an action into a float that is consumed by the neural net
     fn action_to_f32(&self, action : CreatureActions) -> f32 {
 
-        // These are a  little random, but I guss trying to make similar actions have similar values. Not sure that's the
+        // These are a  little random, but I guess trying to make similar actions have similar values. Not sure that's the
         // right way to go about it tho
         return match action {
             CreatureActions::Stay => 0.0,

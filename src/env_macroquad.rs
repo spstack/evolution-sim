@@ -365,6 +365,8 @@ impl EnvMacroquad {
             let (mouse_x, mouse_y) = mouse_position();
             let env_x = (mouse_x / self.grid_x_size) as usize;
             let env_y = (mouse_y / self.grid_y_size) as usize;
+
+            // If mouse is in environment, display info about the hovered space
             if env_x < self.env.params.env_x_size && env_y < self.env.params.env_y_size {
                 let space_type = self.env.positions[env_x][env_y];
                 ui.label(None, format!(" Space X:{} Y:{}    {:?}", env_x, env_y, space_type).as_str());
@@ -387,6 +389,15 @@ impl EnvMacroquad {
                     },
                     _ => {},
                 }
+            }
+            // Otherwise, display a key that shows what each space is
+            else {
+                ui.label(None, "GREEN       => Food space");
+                ui.label(None, "BLACK       => Wall space");
+                ui.label(None, "BLUE        => Passive Creature (has not killed)");
+                ui.label(None, "RED         => Violent Creature (turns more red with each kill)");
+                ui.label(None, "LIGHT RED   => Fight space (creature was killed here)")
+
             }
 
         });
@@ -494,7 +505,7 @@ impl EnvMacroquad {
 
     /// Update the display
     pub fn update_display(&mut self) {
-        clear_background(GRAY);
+        clear_background(BLACK);
 
         // Set style
         self.set_default_skin();
