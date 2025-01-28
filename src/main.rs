@@ -38,6 +38,7 @@ async fn main() {
 // }
 
 // Help string for the command line interface
+#[allow(dead_code)]
 const HELP_TEXT : &str = "
 h = help
 q = quit
@@ -49,6 +50,7 @@ r = run until no creatures left
 
 
 /// Test of the V1 2d environment simulation
+#[allow(dead_code)]
 fn test_env_v1() {
 
     // Allocate the env
@@ -88,6 +90,7 @@ fn test_env_v1() {
 
 
 /// Run full simulation until there's no more creatures left
+#[allow(dead_code)]
 fn run_full_sim(env : &mut EnvironmentV1) {
 
     while env.creatures.len() > 0 {

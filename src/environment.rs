@@ -8,7 +8,6 @@ use crate::creature::*;
 use serde::{Deserialize, Serialize};
 use rand::Rng;
 use std::io::Read;
-use std::io::Write;
 use std::fs::File;
 
 //===============================================================================
@@ -22,13 +21,12 @@ pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability t
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 1; // Number of offspring that each creature will have upon each reproduction event
-pub const REPRODUCTION_AGE : usize = 21;                // Default age at which a creature will reproduce
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 1;  // Number of offspring that each creature will have upon each reproduction event
 pub const MAX_OFFSPRING_SPAWN_DIST : isize = 3;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
-pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];     // color of food space (green)
+pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];   // color of food space (green)
 pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space (black)
 
 
@@ -655,13 +653,13 @@ impl EnvironmentV1 {
             if creature.is_dead() {
                 let pos = creature.position.clone();
   
-                // Update the position map to remove this creature and make it's body food
-                // if it was killed, the hunting creature already got energy, so don't leave food behind
+                // Update the position map to remove this creature 
+                // if it was killed, leave behind a "fight" space just to indicate fight happened
                 if creature.was_killed() {
                     self.positions[pos.x][pos.y] = SpaceStates::FightSpace;
                     self.num_kills += 1;
                 } else {
-                    self.positions[pos.x][pos.y] = SpaceStates::FoodSpace;
+                    self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                     self.num_natural_deaths += 1;
                 }
 
@@ -890,8 +888,8 @@ impl EnvironmentV1 {
             let x_diff : isize = rng.gen_range(-MAX_OFFSPRING_SPAWN_DIST..MAX_OFFSPRING_SPAWN_DIST);
             let y_diff : isize = rng.gen_range(-MAX_OFFSPRING_SPAWN_DIST..MAX_OFFSPRING_SPAWN_DIST);
 
-            let mut x_isize = (target_pos.x as isize + x_diff);
-            let mut y_isize = (target_pos.y as isize + y_diff);
+            let mut x_isize = target_pos.x as isize + x_diff;
+            let mut y_isize = target_pos.y as isize + y_diff;
 
             if x_isize < 0 {
                 x_isize = 0;
@@ -944,17 +942,5 @@ impl EnvironmentV1 {
         return Err("Invalid creature id");
     }
 
-    
-
-    /// Print status on a given creature
-    pub fn print_creature(&self, id : usize) {
-
-        // Check the bounds 
-        if self.creatures.len() <= id {
-            return;
-        }
-
-        // self.creatures[id].brain.show();
-    }
 } 
 

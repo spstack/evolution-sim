@@ -12,8 +12,7 @@ use std::fs::File;
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,Skin,
-    widgets::{self, Group},
-    Drag, Ui,
+    widgets::{self},
 };
 
 //===============================================================================
@@ -38,8 +37,6 @@ const STATS_PANEL_WIDTH : f32 = 400.0;
 const PANEL_X_PADDING : f32 = 10.0;
 const PANEL_Y_PADDING : f32 = 10.0;
 const STATS_PANEL_HEIGHT : f32 = WINDOW_HEIGHT_PX / 2.5;
-const STATS_BACKGROUND_COLOR : Color = Color {r: 0.8, g: 0.8, b:0.8, a: 1.0};
-const MAX_CREATURES_STATS_TO_DISPLAY : usize = 25;
 
 // Param panel params
 const PARAM_PANEL_WIDTH : f32 = 400.0;
@@ -131,10 +128,6 @@ pub struct EnvMacroquad {
     control_panel_x_pos : f32,
     control_panel_y_pos : f32,
 
-    // Window params
-    screen_width_pixels : f32,      // X Size of the environment in pixels
-    screen_height_pixels : f32,     // Y size of the environment in pixels
-
     // Style skin
     default_skin : Skin,            // default sytle for the UI
 
@@ -210,10 +203,6 @@ impl EnvMacroquad {
 
             control_panel_x_pos : 0.0,
             control_panel_y_pos : SCREEN_SIZE_Y + PANEL_Y_PADDING,
-
-            // Set total size of the window for internal tracking
-            screen_width_pixels : WINDOW_WIDTH_PX,
-            screen_height_pixels : WINDOW_HEIGHT_PX,
 
             // Set default skin to default from macroquad (will be overwritten later)
             default_skin : Skin {..root_ui().default_skin()},
@@ -336,7 +325,6 @@ impl EnvMacroquad {
 
     /// Update the statistics panel
     fn update_stats_panel(&mut self) {
-        const HEADER_FONT_SIZE_PX : f32 = 14.0;
 
         // Define the content of the stats panel
         root_ui().window(hash!(), vec2(self.stats_panel_x_pos, self.stats_panel_y_pos), vec2(STATS_PANEL_WIDTH, STATS_PANEL_HEIGHT), |ui| {
@@ -632,7 +620,7 @@ impl EnvMacroquad {
         // Run several steps
         let steps_to_go = self.step_to_jump_to - self.env.time_step;
         let res : Result<(), EnvErrors>;
-        if (steps_to_go >= NUM_STEPS_PER_CALL) {
+        if steps_to_go >= NUM_STEPS_PER_CALL {
             res = self.env.run_n_steps(NUM_STEPS_PER_CALL);
         } else {
             res = self.env.run_n_steps(steps_to_go);
@@ -640,7 +628,7 @@ impl EnvMacroquad {
 
         // If we couldn't run the sim, just stop
         match res {
-            Err(e) => self.state = SimState::STOPPED,
+            Err(_e) => self.state = SimState::STOPPED,
             Ok(_) => (),
         }
 
@@ -668,7 +656,6 @@ impl EnvMacroquad {
 
     /// Call this every loop through the main async function
     pub fn main_loop(&mut self) {
-        let mut cur_time = get_time();
 
         // If we're in fast forward mode, then simply run through this as fast as possible without updating display
         if self.state == SimState::FASTFORWARD {
@@ -679,7 +666,7 @@ impl EnvMacroquad {
         self.update_display();
 
         // Update current time
-        cur_time = get_time();
+        let cur_time = get_time();
 
         // Decide whether we should run the next sim step
         if (self.state == SimState::RUNNING) && (cur_time - self.last_sim_update > MACROQUAD_FRAME_TIME_S) {

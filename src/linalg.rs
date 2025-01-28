@@ -82,7 +82,8 @@ where
         return self.ncols;
     }
 
-    /// Initialize matrix from a flat array
+    /// Initialize matrix from a flat array - allow dead code because this isn't used yet
+    #[allow(dead_code)] 
     pub fn set_from_arr(&mut self, vals : &[T]) {
         for row in 0..self.nrows {
             for col in 0..self.ncols {
@@ -95,6 +96,7 @@ where
     // OPERATIONS
 
     /// Multiply a vector by this matrix
+    #[allow(dead_code)] 
     pub fn mult_vec(&self, vec : &Vec<T>) -> Vec<T> {
         if self.get_ncols() != vec.len() {
             println!("mat cols = {} vec len = {}", self.get_ncols(), vec.len());
@@ -168,6 +170,7 @@ where
     }
 
     /// Subtract 2 matrices
+    #[allow(dead_code)]
     pub fn subtract(&self, other : &Matrix<T>) -> Matrix<T> {
         if self.ncols != other.ncols || self.nrows != other.nrows {
             panic!("Error: Attempted to add matrices with different dimensions");
