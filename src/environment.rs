@@ -17,11 +17,12 @@ pub const DEBUG_LEVEL : usize = 0;
 
 // Env parameters
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
+pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
-pub const NEW_FOOD_PIECES_PER_STEP : f32 = 0.8;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
+pub const NEW_FOOD_PIECES_PER_STEP : f32 = 2.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 1;  // Number of offspring that each creature will have upon each reproduction event
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 2;  // Number of offspring that each creature will have upon each reproduction event
 pub const MAX_OFFSPRING_SPAWN_DIST : isize = 3;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
@@ -72,6 +73,7 @@ pub struct EnvironmentParams {
     pub num_start_food : usize,             // Number of starting food spaces
     pub num_start_walls : usize,            // Number of wall spaces on the board
     pub energy_per_food_piece : usize,      // Number of energy units that will be given per food consumed 
+    pub energy_per_kill : usize,            // Number of energy units that will be given if a creature hunts another
     pub max_offspring_per_reproduce : usize,// Maximum number of offspring that will be produced by one reproduction event
     pub mutation_prob : f32,                // Probability that a single value in the creatures DNA will randomly mutate upon reproduction
     pub avg_new_food_per_day : f32,         // Average number of new food pieces added to the environment per day
@@ -89,6 +91,7 @@ impl EnvironmentParams {
             num_start_food : 150,
             num_start_walls : 200,
             energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
+            energy_per_kill : DEFAULT_ENERGY_PER_KILL,
             max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
             mutation_prob : DEFAULT_MUTATION_PROB,
             avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP, 
@@ -392,7 +395,7 @@ impl EnvironmentV1 {
                                     self.creatures[victim_idx].kill();
 
                                     // Give creature the immediate energy
-                                    self.creatures[creature_idx].eat_food(self.params.energy_per_food_piece);
+                                    self.creatures[creature_idx].eat_food(self.params.energy_per_kill);
                                     self.creatures[creature_idx].set_killer();
                                 }
                             },
@@ -524,17 +527,20 @@ impl EnvironmentV1 {
 
     /// Add a single food space to the specified location
     pub fn add_food_space(&mut self, position : CreaturePosition) {
-        if self.positions[position.x][position.y] != SpaceStates::BlankSpace {
-            panic!("Tried to add a food space to a non-blank space!");
-        }
+        match self.positions[position.x][position.y] {
+            SpaceStates::CreatureSpace(_c) => {
+                println!("Error: Cannot remove creature space to add food space");
+                return;
+            }
+            _ => (),
+        } 
         self.positions[position.x][position.y] = SpaceStates::FoodSpace;
     }
 
     /// Add single creature to the environment at position specified by creature itself
     pub fn add_creature(&mut self, new_creature : CreatureV1) {
-        if self.positions[new_creature.position.x][new_creature.position.y] != SpaceStates::BlankSpace {
-            panic!("Tried to add a creature to a non-blank space!");
-        }
+        // Note: allow overwriting of other types of spaces for creatures
+
         self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);
         self.creatures.push(new_creature);
         self.num_total_creatures += 1;
@@ -542,10 +548,27 @@ impl EnvironmentV1 {
 
     /// Add a wall space to the specified location
     pub fn add_wall_space(&mut self, position : CreaturePosition) {
-        if self.positions[position.x][position.y] != SpaceStates::BlankSpace {
-            panic!("Tried to add a wall space to a non-blank space!");
-        }
+        match self.positions[position.x][position.y] {
+            SpaceStates::CreatureSpace(_c) => {
+                println!("Error: Cannot remove creature space to add wall space");
+                return;
+            }
+            _ => (),
+        } 
+
         self.positions[position.x][position.y] = SpaceStates::WallSpace;
+    }
+
+    /// Add a blank space (remove whatever is in the specified position except for a creature)
+    pub fn add_blank_space(&mut self, position : CreaturePosition) {
+        match self.positions[position.x][position.y] {
+            SpaceStates::CreatureSpace(_c) => {
+                println!("Error: Cannot replace creature space with a blank space");
+                return;
+            }
+            _ => (),
+        } 
+        self.positions[position.x][position.y] = SpaceStates::BlankSpace;
     }
 
     /// Remove all wall spaces from position array
@@ -606,7 +629,7 @@ impl EnvironmentV1 {
         self.num_food = food_count;
     }
 
-    /// Update the position matrix with all food spaces from the provided "positions" matrix
+    /// Update the position matrix with all wall spaces from the provided "positions" matrix
     fn add_walls_from_positions(&mut self, new_positions : &Vec<Vec<SpaceStates>>) {
         let mut wall_count : usize = 0;
 

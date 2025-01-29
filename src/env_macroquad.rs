@@ -23,14 +23,14 @@ pub const DEBUG_LEVEL : usize = 0;
 // Size of the board
 const SCREEN_SIZE_X : f32 = 950.0;
 const SCREEN_SIZE_Y : f32 = 700.0;
-const NUM_GRID_SQUARES_X : usize = 70;
-const NUM_GRID_SQUARES_Y : usize = 50;
+const NUM_GRID_SQUARES_X : usize = 64;
+const NUM_GRID_SQUARES_Y : usize = 64;
 
 
 // Default environment parameters
 const DEFAULT_START_CREATURES : usize = 150;
 const DEFAULT_START_FOOD : usize = 200;
-const DEFAULT_START_WALLS : usize = 150;
+const DEFAULT_START_WALLS : usize = 0;
 
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
@@ -114,6 +114,9 @@ pub struct EnvMacroquad {
     // Data used by UI
     load_opts : LoadOptions,    // Options used when loading environment from a file
 
+    // Data used to draw new spaces
+    current_draw_space_type : Option<SpaceStates>,  // Current type of space that should be drawn if the user clicks on a space square
+
     // Environment derived parameters
     grid_x_size : f32,              // X size of a single grid square in pixels
     grid_y_size : f32,              // Y size of a single grid square in pixels
@@ -188,6 +191,9 @@ impl EnvMacroquad {
                 load_walls : false,
                 load_food : false,
             },
+
+            // Space drawing data
+            current_draw_space_type : None,
 
             // Environment display params
             grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
@@ -388,6 +394,22 @@ impl EnvMacroquad {
 
             }
 
+
+            // Handle clicking to draw new space
+            if is_mouse_button_down(MouseButton::Left) {
+                if env_x < self.env.params.env_x_size && env_y < self.env.params.env_y_size {
+                    let pos = CreaturePosition {x : env_x, y : env_y};
+                    match self.current_draw_space_type {
+                        None => (),
+                        Some(SpaceStates::FoodSpace) => self.env.add_food_space(pos),
+                        Some(SpaceStates::WallSpace) => self.env.add_wall_space(pos),
+                        Some(SpaceStates::BlankSpace) => self.env.add_blank_space(pos),
+                        _ => (),
+                    }
+
+                }
+            }
+
         });
         
     }
@@ -421,7 +443,15 @@ impl EnvMacroquad {
                     self.state = SimState::FASTFORWARD;
                 }
             }
-            
+
+            let chosen_option = ui.combo_box(hash!(), "Space to Draw", &["None", "Food", "Wall", "Blank"], None);
+            match chosen_option {
+                0 => self.current_draw_space_type = None,
+                1 => self.current_draw_space_type = Some(SpaceStates::FoodSpace),
+                2 => self.current_draw_space_type = Some(SpaceStates::WallSpace),
+                3 => self.current_draw_space_type = Some(SpaceStates::BlankSpace),
+                _ => self.current_draw_space_type = None, 
+            }
         });
 
 
@@ -493,7 +523,7 @@ impl EnvMacroquad {
 
     /// Update the display
     pub fn update_display(&mut self) {
-        clear_background(BLACK);
+        clear_background(GRAY);
 
         // Set style
         self.set_default_skin();
