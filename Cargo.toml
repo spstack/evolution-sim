@@ -6,8 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rand = "0.8.5"
-num = "0.4.3"
-macroquad = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+rand = "0.8.*"
+num = "0.4.*"
+macroquad = { version = "0.4.*", optional = true }
+serde = { version = "1.0.*", features = ["derive"] }
+serde_json = "1.0.138"
+
+
+[features]
+macroquad_vis = ["macroquad"]   # Uses the macroquad library to visualize the environment
+console_vis = []                # Use simple console prints to visualize the environment 
+
+default = ["macroquad_vis"]

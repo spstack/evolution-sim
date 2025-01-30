@@ -9,6 +9,7 @@ use crate::environment;
 use crate::environment::*;
 use std::io::Write;
 use std::fs::File;
+
 use macroquad::prelude::*;
 use macroquad::ui::{
     hash, root_ui,Skin,
@@ -18,7 +19,6 @@ use macroquad::ui::{
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEBUG_LEVEL : usize = 0;
 
 // Size of the board
 const SCREEN_SIZE_X : f32 = 950.0;
@@ -246,11 +246,6 @@ impl EnvMacroquad {
     /// Run and display the next step of the simulation
     pub fn run_next_step(&mut self) {
         self.env.advance_step();
-
-        // Print out status of creatures per step
-        if DEBUG_LEVEL > 0 {
-            self.env.show_all_creature_info()
-        }
     }
 
     /// Save the full current environment to a file
@@ -684,8 +679,10 @@ impl EnvMacroquad {
         });
     }
 
-    /// Call this every loop through the main async function
-    pub fn main_loop(&mut self) {
+    /// Main function to call from main loop that will update the display using the full interactive GUI
+    /// This GUI displays the state of the environment as well as the full suite of controls
+    /// This is in contrast to the display only mode which just simply displays the environment
+    pub fn main_loop_interactive_mode(&mut self) {
 
         // If we're in fast forward mode, then simply run through this as fast as possible without updating display
         if self.state == SimState::FASTFORWARD {

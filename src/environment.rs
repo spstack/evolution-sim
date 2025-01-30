@@ -17,7 +17,7 @@ pub const DEBUG_LEVEL : usize = 0;
 
 // Env parameters
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
-pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
+pub const DEFAULT_ENERGY_PER_KILL : usize = 20;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 2.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
@@ -286,7 +286,7 @@ impl EnvironmentV1 {
             for x in 0..self.params.env_x_size {
                 match self.positions[x][y] {
                     SpaceStates::BlankSpace => print!("   "),
-                    SpaceStates::CreatureSpace(id) => print!("{:2} ", id),
+                    SpaceStates::CreatureSpace(id) => print!("{:3}", id % 1000), // just wrap around if the creature id goes beyond 3 digits 
                     SpaceStates::FoodSpace => print!(" # "),
                     SpaceStates::WallSpace => print!("|-|"),
                     SpaceStates::FightSpace => print!(" x "),
@@ -297,10 +297,11 @@ impl EnvironmentV1 {
         }
         println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
         println!("Key:");
-        println!("Creature = <id num>\nFood = #");
+        println!("Creature = <id num>\nFood = #\nWall = |-|");
     }
 
     /// Print all creature info in columns to stdout
+    #[allow(dead_code)]
     pub fn show_all_creature_info(&self) {
         println!("{:12} {:12} {:12} {:15} ", "Creature Id", "Age", "Energy", "Last Action");
         for creature_idx in 0..self.creatures.len() {
