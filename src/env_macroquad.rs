@@ -280,7 +280,7 @@ impl EnvMacroquad {
     fn update_sim_display(&self) {
 
         // Draw background
-        draw_texture_ex(&self.background_texture, 0.0, 0.0, WHITE, self.background_options.clone());
+        // draw_texture_ex(&self.background_texture, 0.0, 0.0, WHITE, self.background_options.clone());
 
         // For each simulation space on the board, update with proper piece
         for x in 0..self.env.params.env_x_size {
@@ -293,7 +293,7 @@ impl EnvMacroquad {
                     }
                     SpaceStates::FoodSpace => self.draw_food_space(x, y),
                     SpaceStates::WallSpace => self.draw_wall_space(x, y),
-                    SpaceStates::FightSpace => self.draw_fight_space(x, y), 
+                    SpaceStates::FightSpace(_ttl) => self.draw_fight_space(x, y), 
                     SpaceStates::BlankSpace => (),
                 }
             }
@@ -518,7 +518,7 @@ impl EnvMacroquad {
 
     /// Update the display
     pub fn update_display(&mut self) {
-        clear_background(GRAY);
+        clear_background(BLACK);
 
         // Set style
         self.set_default_skin();
@@ -553,12 +553,13 @@ impl EnvMacroquad {
         let y_gridsize_div_2 = self.grid_y_size / 2.0;
         let center_x = xpos_pix + x_gridsize_div_2;
         let center_y = ypos_pix + y_gridsize_div_2; 
+        let orientation_line_color = Color {r:0.8, g:0.8, b:0.8, a:1.0};
 
         match orientation {
-            CreatureOrientation::Up => draw_line(center_x, center_y, center_x, center_y - y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
-            CreatureOrientation::Down => draw_line(center_x, center_y, center_x, center_y + y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
-            CreatureOrientation::Left => draw_line(center_x, center_y, center_x - x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
-            CreatureOrientation::Right => draw_line(center_x, center_y, center_x + x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, Color {r:0.0, g:0.0, b:0.0, a:1.0}),
+            CreatureOrientation::Up => draw_line(center_x, center_y, center_x, center_y - y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, orientation_line_color),
+            CreatureOrientation::Down => draw_line(center_x, center_y, center_x, center_y + y_gridsize_div_2, ORIENTATION_LINE_THICKNESS, orientation_line_color),
+            CreatureOrientation::Left => draw_line(center_x, center_y, center_x - x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, orientation_line_color),
+            CreatureOrientation::Right => draw_line(center_x, center_y, center_x + x_gridsize_div_2, center_y, ORIENTATION_LINE_THICKNESS, orientation_line_color),
         }
     }
 
@@ -570,7 +571,7 @@ impl EnvMacroquad {
 
     /// Draw a wall space on the screen
     fn draw_wall_space(&self, x_pos : usize, y_pos : usize) {
-        draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, BLACK);
+        draw_rectangle((x_pos as f32) * self.grid_x_size, (y_pos as f32) * self.grid_y_size, self.grid_x_size, self.grid_y_size, WHITE);
     }
 
     /// Draw a single food space on the screen

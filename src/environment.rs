@@ -19,16 +19,19 @@ pub const DEBUG_LEVEL : usize = 0;
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
 pub const DEFAULT_ENERGY_PER_KILL : usize = 20;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
-pub const NEW_FOOD_PIECES_PER_STEP : f32 = 2.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
+pub const NEW_FOOD_PIECES_PER_STEP : f32 = 3.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 2;  // Number of offspring that each creature will have upon each reproduction event
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 3;  // Number of offspring that each creature will have upon each reproduction event
 pub const MAX_OFFSPRING_SPAWN_DIST : isize = 3;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
 pub const MAX_CREATURE_VIEW_DISTANCE : isize = 5;       // Defines max number of spaces a creature can "see"
 pub const FOOD_SPACE_COLOR : [u8; 3] = [40, 255, 40];   // color of food space (green)
-pub const WALL_SPACE_COLOR : [u8; 3] = [0, 0, 0];       // color of wall space (black)
+pub const WALL_SPACE_COLOR : [u8; 3] = [200, 200, 200]; // color of wall space (white)
+
+// Display params
+pub const FIGHT_SPACE_PERSISTENCE_STEPS : usize = 20;   // Number of time steps a fight space should persist for before it disappears
 
 
 //===============================================================================
@@ -48,7 +51,7 @@ pub enum SpaceStates {
     CreatureSpace(usize),       // Space has a creature in it. The single argument represents the ID of the creature
     FoodSpace,                  // Space has a food in it
     WallSpace,                  // Space that contains a wall
-    FightSpace,                 // Indicator that a creature was killed in this space (temporary)
+    FightSpace(usize),          // Indicator that a creature was killed in this space. Argument is the number of remaining time steps that this space has remaining before it should disappear
 }
 
 
@@ -289,7 +292,7 @@ impl EnvironmentV1 {
                     SpaceStates::CreatureSpace(id) => print!("{:3}", id % 1000), // just wrap around if the creature id goes beyond 3 digits 
                     SpaceStates::FoodSpace => print!(" # "),
                     SpaceStates::WallSpace => print!("|-|"),
-                    SpaceStates::FightSpace => print!(" x "),
+                    SpaceStates::FightSpace(_ttl) => print!(" x "),
                 }
             }
             print!("|");
@@ -324,7 +327,18 @@ impl EnvironmentV1 {
                     SpaceStates::FoodSpace => temp_food += 1,
                     SpaceStates::CreatureSpace(_id) => temp_creatures += 1,
                     SpaceStates::WallSpace => temp_walls += 1,
-                    SpaceStates::FightSpace => temp_blank += 1,
+
+                    // Fight space counts as a blank space, but use this opportunity to
+                    // evaluate whether the time-to-live (ttl) of the fight space is up
+                    // and it should disappear (fight spaces should only be temporary)
+                    SpaceStates::FightSpace(ttl) => {
+                        temp_blank += 1;
+                        if ttl > 0 {
+                            self.positions[x][y] = SpaceStates::FightSpace(ttl - 1);
+                        } else {
+                            self.positions[x][y] = SpaceStates::BlankSpace;
+                        }
+                    }
                 }
             }
         }
@@ -443,8 +457,13 @@ impl EnvironmentV1 {
 
                 // Detect collisions in next space
                 match self.positions[next_position.x][next_position.y] {
-                    // If next space is blank, perform the move
-                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {
+                    // If next space is blank (or fight space), perform the move
+                    SpaceStates::BlankSpace => {
+                        self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
+                        self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(self.creatures[creature_idx].id);
+                        self.creatures[creature_idx].set_position(next_position.x, next_position.y);
+                    },
+                    SpaceStates::FightSpace(_ttl) => {
                         self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
                         self.positions[next_position.x][next_position.y] = SpaceStates::CreatureSpace(self.creatures[creature_idx].id);
                         self.creatures[creature_idx].set_position(next_position.x, next_position.y);
@@ -680,7 +699,7 @@ impl EnvironmentV1 {
                 // Update the position map to remove this creature 
                 // if it was killed, leave behind a "fight" space just to indicate fight happened
                 if creature.was_killed() {
-                    self.positions[pos.x][pos.y] = SpaceStates::FightSpace;
+                    self.positions[pos.x][pos.y] = SpaceStates::FightSpace(FIGHT_SPACE_PERSISTENCE_STEPS);
                     self.num_kills += 1;
                 } else {
                     self.positions[pos.x][pos.y] = SpaceStates::BlankSpace;
@@ -754,7 +773,8 @@ impl EnvironmentV1 {
 
                 // Check what type space is there
                 match self.positions[xpos][ypos] {
-                    SpaceStates::BlankSpace | SpaceStates::FightSpace => {},
+                    SpaceStates::BlankSpace => {},
+                    SpaceStates::FightSpace(_ttl) => {},
 
                     // Food space is in view
                     SpaceStates::FoodSpace => {
