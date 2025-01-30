@@ -73,7 +73,7 @@ pub fn show_env(env : &EnvironmentV1) {
                 SpaceStates::CreatureSpace(id) => print!(" {} ", CREATURE_PRINT_CHAR), // print!("{:3}", id % 1000), // just wrap around if the creature id goes beyond 3 digits 
                 SpaceStates::FoodSpace => print!(" {} ", FOOD_PRINT_CHAR),
                 SpaceStates::WallSpace => print!(" {} ", WALL_PRINT_CHAR),
-                SpaceStates::FightSpace => print!(" {} ", FIGHT_PRINT_CHAR),
+                SpaceStates::FightSpace(_ttl) => print!(" {} ", FIGHT_PRINT_CHAR),
             }
         }
         print!("|");

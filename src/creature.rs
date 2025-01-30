@@ -117,7 +117,7 @@ impl CreatureColor {
 use CreatureActions::*;
 use CreatureInputs::*;
 
-use crate::{neural_net::NeuralNet, SpaceStates};
+use crate::{neural_net::NeuralNet, environment::SpaceStates};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CreatureParams {
