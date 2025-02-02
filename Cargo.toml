@@ -2,7 +2,7 @@
 name = "evolution-sim"
 version = "0.1.0"
 edition = "2021"
-default-run = "console"
+default-run = "evsim-console"
 repository = "https://github.com/spstack/evolution-sim.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -19,11 +19,11 @@ include_macroquad = ["macroquad"]   # Uses the macroquad library to visualize th
 #default = ["include_macroquad"]
 
 [[bin]]
-name = "gui"
+name = "evsim-gui"
 path = "src/main_macroquad.rs"
 required-features = ["include_macroquad"]
 
 [[bin]]
-name = "console"
+name = "evsim-console"
 path = "src/main_console.rs"
 
