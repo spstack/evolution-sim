@@ -14,7 +14,7 @@ const PREVIOUS_LINE_ESAPE_SEQ : &str = "\x1B[F";
 const CLEAR_SCREEN_ESCAPE_SEQ : &str = "\x1B[1J";
 
 // characters to be printed for each space type
-const CREATURE_PRINT_CHAR : &str = "⚇";
+const CREATURE_PRINT_CHAR : &str = "O";
 const WALL_PRINT_CHAR : &str = "▮";
 const FOOD_PRINT_CHAR : &str = "+";
 const FIGHT_PRINT_CHAR : &str = "☠";

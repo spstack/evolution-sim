@@ -2,7 +2,7 @@
 name = "evolution-sim"
 version = "0.1.0"
 edition = "2021"
-default-run = "evsim-console"
+default-run = "evsim-led"
 repository = "https://github.com/spstack/evolution-sim.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -26,4 +26,8 @@ required-features = ["include_macroquad"]
 [[bin]]
 name = "evsim-console"
 path = "src/main_console.rs"
+
+[[bin]]
+name = "evsim-led"
+path = "src/main_led.rs"
 

@@ -195,12 +195,14 @@ impl EnvironmentV1 {
     }
 
     /// Convert this environment to JSON representation for saving/loading
+    #[allow(dead_code)]
     pub fn to_json(&self) -> String {
         let json_string = serde_json::to_string_pretty(&self).unwrap();
         return json_string;
     }
 
     /// Load environment parameters and spaces from json file
+    #[allow(dead_code)]
     pub fn load_from_json(&mut self, json_file : &str, load_ops : &JsonEnvLoadParams) {
         let res = File::open(&json_file);
         let mut file : File;
