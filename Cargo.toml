@@ -1,8 +1,9 @@
 [package]
-name = "evolution_sim"
+name = "evolution-sim"
 version = "0.1.0"
 edition = "2021"
-default-run = "gui"
+default-run = "console"
+repository = "https://github.com/spstack/evolution-sim.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,7 +16,7 @@ serde_json = "1.0.138"
 
 [features]
 include_macroquad = ["macroquad"]   # Uses the macroquad library to visualize the environment
-default = ["include_macroquad"]
+#default = ["include_macroquad"]
 
 [[bin]]
 name = "gui"

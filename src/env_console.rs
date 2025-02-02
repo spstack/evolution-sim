@@ -51,10 +51,11 @@ pub fn run_console_demo_mode() {
         // Wait a bit
         thread::sleep(time::Duration::from_millis(500));
 
-        // Go back number of lines
-        // for _nline in 0..env.params.env_y_size {
-        //     print!("{}", PREVIOUS_LINE_ESAPE_SEQ);
-        // }
+        // Go back number of lines to 'clear' the previous version of the board from the display
+        let num_extra_print_lines: usize = 8;
+        for _nline in 0..(env.params.env_y_size + num_extra_print_lines) {
+            print!("{}", PREVIOUS_LINE_ESAPE_SEQ);
+        }
         print!("{}", CLEAR_SCREEN_ESCAPE_SEQ);
     }
 }
@@ -70,7 +71,7 @@ pub fn show_env(env : &EnvironmentV1) {
         for x in 0..env.params.env_x_size {
             match env.positions[x][y] {
                 SpaceStates::BlankSpace => print!("   "),
-                SpaceStates::CreatureSpace(id) => print!(" {} ", CREATURE_PRINT_CHAR), // print!("{:3}", id % 1000), // just wrap around if the creature id goes beyond 3 digits 
+                SpaceStates::CreatureSpace(_id) => print!(" {} ", CREATURE_PRINT_CHAR),
                 SpaceStates::FoodSpace => print!(" {} ", FOOD_PRINT_CHAR),
                 SpaceStates::WallSpace => print!(" {} ", WALL_PRINT_CHAR),
                 SpaceStates::FightSpace(_ttl) => print!(" {} ", FIGHT_PRINT_CHAR),
@@ -81,7 +82,10 @@ pub fn show_env(env : &EnvironmentV1) {
     }
     println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
     println!("Key:");
-    println!("Creature = {}\nFood = {}\nWall = {}", CREATURE_PRINT_CHAR, FOOD_PRINT_CHAR, WALL_PRINT_CHAR);
+    println!("Creature = {}", CREATURE_PRINT_CHAR);
+    println!("Food = {}", FOOD_PRINT_CHAR);
+    println!("Wall = {}", WALL_PRINT_CHAR);
+    println!("FightSpace = {}", FIGHT_PRINT_CHAR);
 }
 
 
