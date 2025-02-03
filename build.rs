@@ -6,5 +6,7 @@
 
 fn main() {
     // Command to cargo to tell it to link the librgbmatrix library statically
-    println!("cargo::rustc-link-lib=static=/usr/lib/librgbmatrix/librgbmatrix");
+    println!("cargo::rustc-link-search=/usr/lib/librgbmatrix");
+    println!("cargo::rustc-link-lib=static=rgbmatrix");
+    
 }
