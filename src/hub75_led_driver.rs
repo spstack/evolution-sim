@@ -14,9 +14,8 @@ const NUM_LED_ROWS : ::std::os::raw::c_int = 64;
 const NUM_LED_COLS : ::std::os::raw::c_int = 64;
 
 /// Implement a driver for the HUB75 RGB LED matrix
-struct RGBLedMatrixDriver {
+pub struct RGBLedMatrixDriver {
     matrix : *mut RGBLedMatrix,         // Main matrix object pointer used by underlying C library
-
 }
 
 
