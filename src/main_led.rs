@@ -41,6 +41,15 @@ const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
     creature_starting_energy : DEFAULT_ENERGY_LEVEL,
 };
 
+const DEFAULT_JSON_FILE : &str = "data/default_env1.json";
+const DEFAULT_INITIAL_JSON_LOAD_OPTS : JsonEnvLoadParams = JsonEnvLoadParams {
+    load_all : false,
+    load_parameters : false,
+    load_creatures : false,
+    load_walls : true,  // just load walls
+    load_food : false,
+};
+
 
 /// Main function for command line sim visualization version
 fn main() {
@@ -48,6 +57,9 @@ fn main() {
 
     // Only do a set number of sim steps for now
     let mut env = EnvironmentV1::new_rand(&DEFAULT_CONSOLE_PARAMS);
+
+    // Load a default wall configuration to make it more interesting
+    env.load_from_json(DEFAULT_JSON_FILE, &DEFAULT_INITIAL_JSON_LOAD_OPTS);
 
     // Run one initial step
     env.advance_step();
