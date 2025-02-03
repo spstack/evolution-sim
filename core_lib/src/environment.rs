@@ -33,6 +33,24 @@ pub const WALL_SPACE_COLOR : [u8; 3] = [200, 200, 200]; // color of wall space (
 // Display params
 pub const FIGHT_SPACE_PERSISTENCE_STEPS : usize = 20;   // Number of time steps a fight space should persist for before it disappears
 
+// Statically link in the contents of several default environment layouts
+// NOTE: THIS INCREASES THE SIZE OF THE IMAGE BY KIND OF A LOT!
+const DEFAULT_ENV_ROWS : usize = 64;
+const DEFAULT_ENV_COLS : usize = 64;
+const NUM_DEFAULT_ENVIRONMENTS : usize = 6;
+const DEFAULT_ENV0 : &str = include_str!("../data/default_env1.json");
+const DEFAULT_ENV1 : &str = include_str!("../data/default_env2.json");
+const DEFAULT_ENV2 : &str = include_str!("../data/default_env3.json");
+const DEFAULT_ENV3 : &str = include_str!("../data/default_env4.json");
+const DEFAULT_ENV4 : &str = include_str!("../data/default_env5.json");
+const DEFAULT_ENV5 : &str = include_str!("../data/default_env6.json");
+const DEFAULT_ENVS : [&str; 6] = [
+    DEFAULT_ENV0,
+    DEFAULT_ENV1,
+    DEFAULT_ENV2,
+    DEFAULT_ENV3,
+    DEFAULT_ENV4,
+    DEFAULT_ENV5];
 
 //===============================================================================
 // Environment V1 Declarations
@@ -125,8 +143,94 @@ pub struct EnvironmentV1 {
 }
 
 
+
 /// Implementation of EnvironmentV1
 impl EnvironmentV1 {
+
+    /// Get a new random environment that uses one of the built in default wall layouts
+    /// in_params - the input environment parameters to use
+    /// default_env_num - which built in environment to load [1,6] set to zero for new random layout
+    pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : usize) -> EnvironmentV1 {
+
+        // Sanity check the inputs
+        if default_env_num > DEFAULT_ENVS.len() {
+            panic!("Error: Invalid default environment number specified");
+        }
+        if default_env_num != 0 && (in_params.env_x_size != DEFAULT_ENV_COLS || in_params.env_y_size != DEFAULT_ENV_ROWS) {
+            panic!("Error: Size of the environment specified does not match the default environment sizes (nows = {} cols = {}", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
+        }
+
+        // Initialize rng
+        let mut rng = rand::thread_rng();
+
+        // Initialize all positions to be blank at first
+        let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
+
+        // Initialize creature vector
+        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(in_params.num_start_creatures);
+        let num_spaces = in_params.env_x_size * in_params.env_y_size;
+
+        // Create temporary environment, transferring ownership of vectors
+        let mut temp_env = EnvironmentV1 {
+            params: in_params.clone(),
+            creatures : temp_creature_vec,
+            positions : temp_positions,
+            time_step : 0,
+            num_food : 0, // set to zero as these will be added later
+            num_creatures : 0,
+            num_walls : 0,
+            num_blank : num_spaces,
+            num_total_creatures : in_params.num_start_creatures,
+            num_kills : 0,
+            num_natural_deaths : 0,
+        };
+
+        // Now that we have the temporary env, load the initial layout (only the walls)
+        let default_env_json = DEFAULT_ENVS[default_env_num + 1];
+        let load_ops = JsonEnvLoadParams {
+            load_all : false,
+            load_creatures : false,
+            load_food : false,
+            load_parameters : false,
+            load_walls : true,
+        };
+        temp_env.load_from_json(default_env_json, &load_ops);
+
+
+        // Fill in random spaces with food
+        for _food_num in 0..in_params.num_start_food {
+            let pos = temp_env.get_rand_blank_space();
+            temp_env.add_food_space(pos);
+        }
+
+        // Fill in random spaces with creatures
+        for creature_num in 0..in_params.num_start_creatures {
+            // Create creature
+            let mut creature = CreatureV1::new(creature_num, &CreatureParams::new());
+
+            // Set few parameters of the new creature
+            let pos = temp_env.get_rand_blank_space();
+            creature.set_position(pos.x, pos.y);
+
+            // Set random initial orientation
+            let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
+            let orientation = match orient {
+                0 => CreatureOrientation::Up,
+                1 => CreatureOrientation::Right,
+                2 => CreatureOrientation::Down,
+                3 => CreatureOrientation::Left,
+                _ => panic!("Invalid initial random orientation! Update the number of states"),
+            };
+            creature.set_orientation(orientation);
+
+            // Add it to the board
+            temp_env.add_creature(creature);
+        }
+
+        return temp_env;
+
+
+    }
 
     /// Constructor for new environment instance that's randomly populated
     pub fn new_rand(in_params : &EnvironmentParams) -> EnvironmentV1 {
@@ -201,9 +305,8 @@ impl EnvironmentV1 {
         return json_string;
     }
 
-    /// Load environment parameters and spaces from json file
-    #[allow(dead_code)]
-    pub fn load_from_json(&mut self, json_file : &str, load_ops : &JsonEnvLoadParams) {
+    /// Load environment from a json file
+    pub fn load_from_json_file(&mut self, json_file : &str, load_ops : &JsonEnvLoadParams) {
         let res = File::open(&json_file);
         let mut file : File;
         match res {
@@ -217,6 +320,13 @@ impl EnvironmentV1 {
         // Read all contents into temporary string
         let mut json_contents : String = String::new();
         let _ = file.read_to_string(&mut json_contents);
+
+        // Now that we have the contents, perform the load
+        self.load_from_json(&json_contents, load_ops);
+    }
+
+    /// Load environment parameters and spaces from json text 
+    pub fn load_from_json(&mut self, json_contents : &str, load_ops : &JsonEnvLoadParams) {
 
         // Create a temporary instantiation of the environment, so we can pull various things from it
         let temp_env_res : Result<EnvironmentV1, serde_json::Error>  = serde_json::from_str(&json_contents); 
@@ -258,8 +368,6 @@ impl EnvironmentV1 {
             self.remove_all_food();
             self.add_food_from_positions(&temp_env.positions);
         }
-
-
     }
 
     /// Main interface to run a certain number of simulation steps

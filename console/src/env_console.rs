@@ -39,7 +39,7 @@ const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
 /// Run an environment simulation that infinitely runs a bunch of simulations for
 /// demonstration purposes
 pub fn run_console_demo_mode() {
-    let mut env = EnvironmentV1::new_rand(&DEFAULT_CONSOLE_PARAMS);
+    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 3);
 
     // Run one initial step
     env.advance_step();

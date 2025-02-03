@@ -19,6 +19,7 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
+const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with
 const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
@@ -48,10 +49,11 @@ const DEFAULT_INITIAL_JSON_LOAD_OPTS : JsonEnvLoadParams = JsonEnvLoadParams {
 
 /// Main function for command line sim visualization version
 fn main() {
+    // Initialize the driver
     let mut driver = RGBLedMatrixDriver::new();
 
     // Only do a set number of sim steps for now
-    let mut env = EnvironmentV1::new_rand(&DEFAULT_CONSOLE_PARAMS);
+    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 4);
 
     // Load a default wall configuration to make it more interesting
     env.load_from_json(DEFAULT_JSON_FILE, &DEFAULT_INITIAL_JSON_LOAD_OPTS);
@@ -59,7 +61,7 @@ fn main() {
     // Run one initial step
     env.advance_step();
 
-    for _step in 0..10 {
+    for _step in 0..50 {
         // Advance one day
         env.advance_step();
 
@@ -67,8 +69,22 @@ fn main() {
         display_env_on_led_panel(&env, &mut driver);
 
         // Wait a bit
-        thread::sleep(core::time::Duration::from_millis(500));
+        thread::sleep(core::time::Duration::from_millis(STEP_TIME_DELAY));
 
+    }
+
+
+    // Load another default image
+    env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 2);
+    for _step in 0..50 {
+        // Advance one day
+        env.advance_step();
+
+        // Update LED panel
+        display_env_on_led_panel(&env, &mut driver);
+
+        // Wait a bit
+        thread::sleep(core::time::Duration::from_millis(STEP_TIME_DELAY));
     }
     // println!("Press enter to exit...");
     // let mut choice = String::new();
