@@ -1,0 +1,14 @@
+[package]
+name = "console"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+core_lib = { path = "../core_lib" }
+
+[[bin]]
+name = "evsim-console"
+path = "src/main.rs"
+

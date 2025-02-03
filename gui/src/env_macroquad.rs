@@ -4,9 +4,8 @@
  * Created: 5/1/2022
  * Description: Implements graphical 2D environment using `macroquad` graphics lib
  * ===============================================================================*/
-use crate::creature::*;
-use crate::environment;
-use crate::environment::*;
+use core_lib::creature::*;
+use core_lib::environment::*;
 use std::io::Write;
 use std::fs::File;
 
@@ -239,7 +238,7 @@ impl EnvMacroquad {
         if self.update_params_from_text() {
 
             // Generate a new environment with new params
-            self.env = environment::EnvironmentV1::new_rand(&self.env.params);
+            self.env = EnvironmentV1::new_rand(&self.env.params);
         }
     }
 

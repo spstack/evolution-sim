@@ -66,24 +66,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
+name = "console"
+version = "0.2.0"
+dependencies = [
+ "core_lib",
+]
+
+[[package]]
+name = "core_lib"
+version = "0.2.0"
+dependencies = [
+ "num",
+ "rand",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
 dependencies = [
  "cfg-if",
-]
-
-[[package]]
-name = "evolution-sim"
-version = "0.1.0"
-dependencies = [
- "cc",
- "macroquad",
- "num",
- "rand",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -133,6 +138,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e05e7e6723e3455f4818c7b26e855439f7546cf617ef669d1adedb8669e5cb9"
 
 [[package]]
+name = "gui"
+version = "0.2.0"
+dependencies = [
+ "core_lib",
+ "macroquad",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,6 +172,14 @@ name = "itoa"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
+
+[[package]]
+name = "led"
+version = "0.2.0"
+dependencies = [
+ "cc",
+ "core_lib",
+]
 
 [[package]]
 name = "libc"

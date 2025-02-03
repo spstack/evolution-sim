@@ -1,4 +1,3 @@
-
 /** ===============================================================================
  * File: main_macroquad.rs
  * Author: Scott Stack
@@ -8,10 +7,6 @@
  *  - generate walls in more interesting way (connected walls)
  *  - allow saving individual creatures
  * ===============================================================================*/
-mod linalg;
-mod neural_net;
-mod creature;
-mod environment;
 mod env_macroquad;
 use macroquad::prelude::next_frame;
 

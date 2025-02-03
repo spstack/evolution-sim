@@ -5,18 +5,13 @@
  * Description: main application entry point for LED matrix target version of the program
  * This version interfaces specifically with HUB75 matrix LED wall panels
  * ===============================================================================*/
-mod linalg;
-mod neural_net;
-mod creature;
-mod environment;
-mod env_console;
 mod hub75_led_driver;
 mod librgbmatrix_defines;
 
 use std::io;
 use std::thread;
-use environment::*;
-use creature::*;
+use core_lib::environment::*;
+use core_lib::creature::*;
 use hub75_led_driver::*;
 use librgbmatrix_defines::Color;
 
@@ -108,7 +103,7 @@ fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriv
                 }
                 SpaceStates::FoodSpace => driver.set_buffered_pixel(x, y, FOOD_SPACE_COLOR),
                 SpaceStates::WallSpace => driver.set_buffered_pixel(x, y, WALL_SPACE_COLOR),
-                SpaceStates::FightSpace(_ttl) => driver.set_buffered_pixel(x, y, WALL_SPACE_COLOR),
+                SpaceStates::FightSpace(_ttl) => driver.set_buffered_pixel(x, y, FIGHT_SPACE_COLOR),
             }
         }
     }

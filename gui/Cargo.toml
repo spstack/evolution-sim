@@ -1,0 +1,16 @@
+[package]
+name = "gui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+core_lib = { path = "../core_lib" }
+macroquad = { version = "0.4.*" }
+
+[[bin]]
+name = "evsim-gui"
+path = "src/main.rs"
+
+

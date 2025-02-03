@@ -5,8 +5,8 @@
  */
 use std::thread;
 use std::time;
-use crate::environment::*;
-use crate::creature::*;
+use core_lib::environment::*;
+use core_lib::creature::*;
 use std::io;
 
 // Constant escape sequences for visualization

@@ -1,14 +1,14 @@
 /**
- * Build script that augments the Cargo.toml to specify more advanced options (as far as I can tell)
+ * Build script that augments the Cargo.toml to specify more advanced options
  * 
  * This is used to build/link the required external C driver for the matrix LED panels
+ * it uses the `cc` crate which actually handles all of the compilation and linking in a
+ * pretty straightforward way.
  */
 
-
 fn main() {
-    // Command to cargo to tell it to link the librgbmatrix library statically
-    // println!("cargo::rustc-link-search=/usr/lib/librgbmatrix");
-    // println!("cargo::rustc-link-lib=static=rgbmatrix");
+
+    // Build rpi-rgb-led-matrix from source
     cc::Build::new()
         .cpp(true)
         .includes(["src/rpi-rgb-led-matrix/include"])

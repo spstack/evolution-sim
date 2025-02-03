@@ -1,36 +1,18 @@
-[package]
-name = "evolution-sim"
-version = "0.1.0"
+# Main config for the evolution simulation package
+
+# Define members of the project workspace
+[workspace]
+members = [ "console",    
+    "core_lib",
+    "console",
+    "gui",
+    "led",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0"
+authors = ["Scott Stack"]
 edition = "2021"
-default-run = "evsim-led"
-repository = "https://github.com/spstack/evolution-sim.git"
-
-
-# These are dependencies needed to actually execute the build (not for the app itself)
-[build-dependencies]
-cc = "1.0"
-
-[dependencies]
-rand = "0.8.*"
-num = "0.4.*"
-macroquad = { version = "0.4.*", optional = true }
-serde = { version = "1.0.*", features = ["derive"] }
-serde_json = "1.0.138"
-
-[features]
-include_macroquad = ["macroquad"]   # Uses the macroquad library to visualize the environment
-#default = ["include_macroquad"]
-
-[[bin]]
-name = "evsim-gui"
-path = "src/main_macroquad.rs"
-required-features = ["include_macroquad"]
-
-[[bin]]
-name = "evsim-console"
-path = "src/main_console.rs"
-
-[[bin]]
-name = "evsim-led"
-path = "src/main_led.rs"
-
+description = "A program that simulates evolution of little pixel creatures!"
+repository = "https://github.com/spstack/evolution-sim"

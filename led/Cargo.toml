@@ -1,0 +1,18 @@
+[package]
+name = "led"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+build = "build.rs"
+
+# These are dependencies needed to actually execute the build (not for the app itself)
+[build-dependencies]
+cc = "1.0"
+
+[dependencies]
+core_lib = { path = "../core_lib" }
+
+[[bin]]
+name = "evsim-led"
+path = "src/main.rs"
