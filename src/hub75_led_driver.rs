@@ -16,6 +16,7 @@ const NUM_LED_COLS : ::std::os::raw::c_int = 64;
 /// Implement a driver for the HUB75 RGB LED matrix
 pub struct RGBLedMatrixDriver {
     matrix : *mut RGBLedMatrix,         // Main matrix object pointer used by underlying C library
+    offscreen_canvas : *mut LedCanvas,  // The screen is double buffered, and this canvas is what we'll draw on before applying changes
 }
 
 
@@ -73,26 +74,40 @@ impl RGBLedMatrixDriver {
             panic!("Error! led matrix driver returned NULL!");
         }
 
+        let tmp_offscreen_canvas : *mut LedCanvas;
+        unsafe {
+            tmp_offscreen_canvas = led_matrix_create_offscreen_canvas(tmp_matrix);
+            if tmp_offscreen_canvas == std::ptr::null_mut() {
+                panic!("Error: Could not create double buffered offscreen canvas for LED display");
+            }
+        }
+
         // Return the driver object initialized with matrix
-        return RGBLedMatrixDriver { matrix: tmp_matrix };
+        return RGBLedMatrixDriver { matrix: tmp_matrix, offscreen_canvas : tmp_offscreen_canvas };
 
     }
 
 
-    /// Set value of an individual pixel
-    pub fn set_pixel(&self, x : i32, y : i32, color : Color) {
+    /// Set value of an individual pixel in the buffered version of the image (next frame to be displayed)
+    pub fn set_buffered_pixel(&self, x : i32, y : i32, color : Color) {
         unsafe {
-            let canvas = led_matrix_get_canvas(self.matrix);
-            led_canvas_set_pixel(canvas, x, y, color.r, color.g, color.b);
+            // let canvas = led_matrix_get_canvas(self.matrix);
+            led_canvas_set_pixel(self.offscreen_canvas, x, y, color.r, color.g, color.b);
         }
     }
 
-    /// Clear the entire screen
-    pub fn clear_screen(&self) {
+    /// Clear the entire buffered version of the screen (next frame)
+    pub fn clear_buffered_screen(&self) {
         unsafe {
-            let canvas = led_matrix_get_canvas(self.matrix);
-            led_canvas_clear(canvas);
+            led_canvas_clear(self.offscreen_canvas);
         }
+    }
+
+    /// Actually display the buffered frame that's been built up and swap the offscreen buffer
+    pub fn apply_buffered_frame(&mut self) {
+        unsafe {
+            self.offscreen_canvas = led_matrix_swap_on_vsync(self.matrix, self.offscreen_canvas);
+        } 
     }
 
     /// Close the matrix object to stop background process and free up memory.

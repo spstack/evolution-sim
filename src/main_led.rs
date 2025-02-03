@@ -44,7 +44,7 @@ const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
 
 /// Main function for command line sim visualization version
 fn main() {
-    let driver = RGBLedMatrixDriver::new();
+    let mut driver = RGBLedMatrixDriver::new();
 
     // Only do a set number of sim steps for now
     let mut env = EnvironmentV1::new_rand(&DEFAULT_CONSOLE_PARAMS);
@@ -57,7 +57,7 @@ fn main() {
         env.advance_step();
 
         // Update LED panel
-        display_env_on_led_panel(&env, &driver);
+        display_env_on_led_panel(&env, &mut driver);
 
         // Wait a bit
         thread::sleep(core::time::Duration::from_millis(500));
@@ -73,9 +73,9 @@ fn main() {
 
 
 /// Function to take an environment and display it's existing state
-fn display_env_on_led_panel(env : &EnvironmentV1, driver : &RGBLedMatrixDriver) {
+fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriver) {
     // clear everything first
-    driver.clear_screen();
+    driver.clear_buffered_screen();
 
     // Loop through the env and set each pixel to proper color
     for y_usize in 0..env.params.env_y_size {
@@ -92,12 +92,15 @@ fn display_env_on_led_panel(env : &EnvironmentV1, driver : &RGBLedMatrixDriver) 
                         g: creature_color_env.green,
                         b: creature_color_env.blue,
                     };
-                    driver.set_pixel(x, y, creature_color);
+                    driver.set_buffered_pixel(x, y, creature_color);
                 }
-                SpaceStates::FoodSpace => driver.set_pixel(x, y, FOOD_SPACE_COLOR),
-                SpaceStates::WallSpace => driver.set_pixel(x, y, WALL_SPACE_COLOR),
-                SpaceStates::FightSpace(_ttl) => driver.set_pixel(x, y, WALL_SPACE_COLOR),
+                SpaceStates::FoodSpace => driver.set_buffered_pixel(x, y, FOOD_SPACE_COLOR),
+                SpaceStates::WallSpace => driver.set_buffered_pixel(x, y, WALL_SPACE_COLOR),
+                SpaceStates::FightSpace(_ttl) => driver.set_buffered_pixel(x, y, WALL_SPACE_COLOR),
             }
         }
     }
+
+    // Actually perform the buffer swap and display the image
+    driver.apply_buffered_frame();
 }
