@@ -14,22 +14,90 @@ mod hub75_led_driver;
 mod librgbmatrix_defines;
 
 use std::io;
+use std::thread;
+use environment::*;
+use creature::*;
 use hub75_led_driver::*;
 use librgbmatrix_defines::Color;
+
+const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
+const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
+const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
+
+
+// Default parameters that the LED simulation visualization will start with
+const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
+    env_x_size : 64, // THIS MUST BE SIZE OF PANEL!
+    env_y_size : 64, // THIS MUST BE SIZE OF PANEL!
+    num_start_creatures : 100,  
+    num_start_food : 150,
+    num_start_walls : 200,
+    energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
+    energy_per_kill : DEFAULT_ENERGY_PER_KILL,
+    max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
+    mutation_prob : DEFAULT_MUTATION_PROB,
+    avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP, 
+    creature_repro_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
+    creature_starting_energy : DEFAULT_ENERGY_LEVEL,
+};
+
 
 /// Main function for command line sim visualization version
 fn main() {
     let driver = RGBLedMatrixDriver::new();
 
-    // Just set the middle pixel to blue-ish
-    let pixel_color = Color{r: 100, g:  100, b: 255};
-    driver.set_pixel(32, 32, pixel_color);
+    // Only do a set number of sim steps for now
+    let mut env = EnvironmentV1::new_rand(&DEFAULT_CONSOLE_PARAMS);
 
-    // Infinite loop
-    println!("Press enter to exit...");
-    let mut choice = String::new();
-    let res = io::stdin().read_line(&mut choice).unwrap();
+    // Run one initial step
+    env.advance_step();
+
+    for _step in 0..10 {
+        // Advance one day
+        env.advance_step();
+
+        // Update LED panel
+        display_env_on_led_panel(&env, &driver);
+
+        // Wait a bit
+        thread::sleep(core::time::Duration::from_millis(500));
+
+    }
+    // println!("Press enter to exit...");
+    // let mut choice = String::new();
+    // let res = io::stdin().read_line(&mut choice).unwrap();
 
     driver.close();
 }
 
+
+
+/// Function to take an environment and display it's existing state
+fn display_env_on_led_panel(env : &EnvironmentV1, driver : &RGBLedMatrixDriver) {
+    // clear everything first
+    driver.clear_screen();
+
+    // Loop through the env and set each pixel to proper color
+    for y_usize in 0..env.params.env_y_size {
+        for x_usize in 0..env.params.env_x_size {
+            let x = x_usize as i32;
+            let y = y_usize as i32;
+            match env.positions[x_usize][y_usize] {
+                SpaceStates::BlankSpace => (), // no need to update this pixel
+                SpaceStates::CreatureSpace(id) => {
+                    let idx = env.get_creature_idx_from_id(id).unwrap();
+                    let creature_color_env = env.creatures[idx].color;
+                    let creature_color = Color {
+                        r: creature_color_env.red,
+                        g: creature_color_env.green,
+                        b: creature_color_env.blue,
+                    };
+                    driver.set_pixel(x, y, creature_color);
+                }
+                SpaceStates::FoodSpace => driver.set_pixel(x, y, FOOD_SPACE_COLOR),
+                SpaceStates::WallSpace => driver.set_pixel(x, y, WALL_SPACE_COLOR),
+                SpaceStates::FightSpace(_ttl) => driver.set_pixel(x, y, WALL_SPACE_COLOR),
+            }
+        }
+    }
+}

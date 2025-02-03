@@ -80,13 +80,19 @@ impl RGBLedMatrixDriver {
 
 
     /// Set value of an individual pixel
-    pub fn set_pixel(&self, x : i32, y : i32, color : Color) -> bool {
+    pub fn set_pixel(&self, x : i32, y : i32, color : Color) {
         unsafe {
             let canvas = led_matrix_get_canvas(self.matrix);
             led_canvas_set_pixel(canvas, x, y, color.r, color.g, color.b);
         }
+    }
 
-        return true;
+    /// Clear the entire screen
+    pub fn clear_screen(&self) {
+        unsafe {
+            let canvas = led_matrix_get_canvas(self.matrix);
+            led_canvas_clear(canvas);
+        }
     }
 
     /// Close the matrix object to stop background process and free up memory.
