@@ -83,6 +83,7 @@ version = "0.2.0"
 dependencies = [
  "core_lib",
  "ctrlc",
+ "rand",
 ]
 
 [[package]]

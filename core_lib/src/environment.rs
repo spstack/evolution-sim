@@ -149,15 +149,20 @@ impl EnvironmentV1 {
 
     /// Get a new random environment that uses one of the built in default wall layouts
     /// in_params - the input environment parameters to use
-    /// default_env_num - which built in environment to load [1,6] set to zero for new random layout
-    pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : usize) -> EnvironmentV1 {
+    /// default_env_num - which built-in environment to load (Specify None for completely random)
+    pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : Option<usize>) -> EnvironmentV1 {
 
         // Sanity check the inputs
-        if default_env_num > DEFAULT_ENVS.len() {
-            panic!("Error: Invalid default environment number specified");
-        }
-        if default_env_num != 0 && (in_params.env_x_size != DEFAULT_ENV_COLS || in_params.env_y_size != DEFAULT_ENV_ROWS) {
-            panic!("Error: Size of the environment specified does not match the default environment sizes (nows = {} cols = {}", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
+        match default_env_num {
+            Some(val) => {
+                if val > DEFAULT_ENVS.len() {
+                    panic!("Error: Invalid default environment number specified");
+                }
+                if (in_params.env_x_size != DEFAULT_ENV_COLS) || (in_params.env_y_size != DEFAULT_ENV_ROWS) {
+                    panic!("Error: Size of the environment specified does not match the default environment sizes (nows = {} cols = {}", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
+                }
+            },
+            None => (), // No bounds checking to be done
         }
 
         // Initialize rng
@@ -186,16 +191,28 @@ impl EnvironmentV1 {
         };
 
         // Now that we have the temporary env, load the initial layout (only the walls)
-        let default_env_json = DEFAULT_ENVS[default_env_num + 1];
-        let load_ops = JsonEnvLoadParams {
-            load_all : false,
-            load_creatures : false,
-            load_food : false,
-            load_parameters : false,
-            load_walls : true,
-        };
-        temp_env.load_from_json(default_env_json, &load_ops);
+        match default_env_num {
+            // If specified, load pre-defined environment (only the walls though)
+            Some(env_num) => {
+                let default_env_json = DEFAULT_ENVS[env_num];
+                let load_ops = JsonEnvLoadParams {
+                    load_all : false,
+                    load_creatures : false,
+                    load_food : false,
+                    load_parameters : false,
+                    load_walls : true,
+                };
+                temp_env.load_from_json(default_env_json, &load_ops);
+            },
 
+            // Load random set of walls
+            None => {
+                for _wall_num in 0..in_params.num_start_walls {
+                    let pos = temp_env.get_rand_blank_space();
+                    temp_env.add_wall_space(pos);
+                }
+            }
+        }
 
         // Fill in random spaces with food
         for _food_num in 0..in_params.num_start_food {

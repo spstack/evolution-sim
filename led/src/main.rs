@@ -64,8 +64,8 @@ fn main() {
     // Load a random default environment. This API allows selecting from a numbered list
     // of predefined environments that are at least a little interesting. Number zero
     // is always just totally random layout
-    let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS + 1);
-    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, starting_env_num);
+    let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS);
+    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, Some(starting_env_num));
 
     // Run visualizations forever
     loop {
@@ -96,7 +96,15 @@ fn main() {
         display_fade_out_animation(&mut driver);
 
         // Ok, now start a new random simulation
-        let env_num = rng.gen_range(0..NUM_DEFAULT_ENVS + 1);
+        // This block here really only serves to generate a random environment, but with the chance
+        // to generate a completely random environment by sending `None` as the default
+        let tmp_env_num : usize = rng.gen_range(0..=NUM_DEFAULT_ENVS);
+        let env_num : Option<usize>;
+        if tmp_env_num >= NUM_DEFAULT_ENVS {
+            env_num = None;
+        } else {
+            env_num = Some(tmp_env_num);
+        }
         env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, env_num);
         display_env_on_led_panel(&env, &mut driver);
 

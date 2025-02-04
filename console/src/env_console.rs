@@ -5,6 +5,7 @@
  */
 use std::thread;
 use std::time;
+use rand::Rng;
 use core_lib::environment::*;
 use core_lib::creature::*;
 use std::io;
@@ -39,7 +40,16 @@ const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
 /// Run an environment simulation that infinitely runs a bunch of simulations for
 /// demonstration purposes
 pub fn run_console_demo_mode() {
-    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 3);
+    let mut rng = rand::thread_rng();
+
+    let tmp_env_num : usize = rng.gen_range(0..=NUM_DEFAULT_ENVS);
+    let env_num : Option<usize>;
+    if tmp_env_num >= NUM_DEFAULT_ENVS {
+        env_num = None;
+    } else {
+        env_num = Some(tmp_env_num);
+    }
+    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, env_num);
 
     // Run one initial step
     env.advance_step();
