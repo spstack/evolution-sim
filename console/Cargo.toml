@@ -7,6 +7,7 @@ repository.workspace = true
 
 [dependencies]
 core_lib = { path = "../core_lib" }
+ctrlc = "3.4"
 
 [[bin]]
 name = "evsim-console"

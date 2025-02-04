@@ -9,7 +9,11 @@ mod hub75_led_driver;
 mod librgbmatrix_defines;
 
 use std::io;
+use std::process;
 use std::thread;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use rand::Rng;
 use core_lib::environment::*;
 use core_lib::creature::*;
 use hub75_led_driver::*;
@@ -19,10 +23,11 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
+const MAX_TIME_STEPS_PER_SIM : usize = 100;
 const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with
-const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
+const DEFAULT_PARAMS : EnvironmentParams = EnvironmentParams {
     env_x_size : 64, // THIS MUST BE SIZE OF PANEL!
     env_y_size : 64, // THIS MUST BE SIZE OF PANEL!
     num_start_creatures : 100,  
@@ -37,59 +42,69 @@ const DEFAULT_CONSOLE_PARAMS : EnvironmentParams = EnvironmentParams {
     creature_starting_energy : DEFAULT_ENERGY_LEVEL,
 };
 
-const DEFAULT_JSON_FILE : &str = "data/default_env1.json";
-const DEFAULT_INITIAL_JSON_LOAD_OPTS : JsonEnvLoadParams = JsonEnvLoadParams {
-    load_all : false,
-    load_parameters : false,
-    load_creatures : false,
-    load_walls : true,  // just load walls
-    load_food : false,
-};
-
 
 /// Main function for command line sim visualization version
 fn main() {
     // Initialize the driver
     let mut driver = RGBLedMatrixDriver::new();
 
-    // Only do a set number of sim steps for now
-    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 4);
+    // initialize the rng
+    let mut rng = rand::thread_rng();
 
-    // Load a default wall configuration to make it more interesting
-    env.load_from_json(DEFAULT_JSON_FILE, &DEFAULT_INITIAL_JSON_LOAD_OPTS);
+    // Setup a Ctrl-C handler to close the driver before quitting
+    let ctrlc_triggered_flag = Arc::new(AtomicBool::new(false));
+    let ctrlc_handler_flag = ctrlc_triggered_flag.clone();
+    ctrlc::set_handler(move || {
+        // All this just to set a flag...
+        let _ = ctrlc_handler_flag.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |_| return Some(true));
+        println!("Crtl-C received...exiting");
+        // process::exit(0);
+    }).expect("Error setting Ctrl-C handler");
 
-    // Run one initial step
-    env.advance_step();
+    // Load a random default environment. This API allows selecting from a numbered list
+    // of predefined environments that are at least a little interesting. Number zero
+    // is always just totally random layout
+    let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS + 1);
+    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, starting_env_num);
 
-    for _step in 0..50 {
-        // Advance one day
-        env.advance_step();
+    // Run visualizations forever
+    loop {
 
-        // Update LED panel
+        // Run the simulation until there are no more creatures left!
+        while env.num_creatures > 0 && env.time_step < MAX_TIME_STEPS_PER_SIM {
+            // Advance one day
+            env.advance_step();
+
+            // Update LED panel
+            display_env_on_led_panel(&env, &mut driver);
+
+            // Wait a bit
+            thread::sleep(core::time::Duration::from_millis(STEP_TIME_DELAY));
+
+            // Check whether we should stop
+            if ctrlc_triggered_flag.load(Ordering::Relaxed) {
+                break;
+            }
+        }
+
+        // Check again to break out of the outer loop
+        if ctrlc_triggered_flag.load(Ordering::Relaxed) {
+            break;
+        }
+
+        // Ok, so the sim has ended. Display a fading animation
+        display_fade_out_animation(&mut driver);
+
+        // Ok, now start a new random simulation
+        let env_num = rng.gen_range(0..NUM_DEFAULT_ENVS + 1);
+        env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, env_num);
         display_env_on_led_panel(&env, &mut driver);
 
-        // Wait a bit
-        thread::sleep(core::time::Duration::from_millis(STEP_TIME_DELAY));
-
+        // Once the display is updated, slowly fade in
+        display_fade_in_animation(&mut driver);
     }
-
-
-    // Load another default image
-    env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, 2);
-    for _step in 0..50 {
-        // Advance one day
-        env.advance_step();
-
-        // Update LED panel
-        display_env_on_led_panel(&env, &mut driver);
-
-        // Wait a bit
-        thread::sleep(core::time::Duration::from_millis(STEP_TIME_DELAY));
-    }
-    // println!("Press enter to exit...");
-    // let mut choice = String::new();
-    // let res = io::stdin().read_line(&mut choice).unwrap();
-
+  
+    // Make sure to close the driver and reset the hardware before quitting!
     driver.close();
 }
 
@@ -126,4 +141,44 @@ fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriv
 
     // Actually perform the buffer swap and display the image
     driver.apply_buffered_frame();
+}
+
+
+
+/// Display a fading animation that simply dims the display slowly
+fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver) {
+    let initial_brightness = driver.get_matrix_brightness();
+    if initial_brightness == 0 {
+        println!("Error: can't perform fade out if display is already off...");
+        return;
+    }
+    let num_steps: u8 = 50;
+    let step_delay_ms : u64 = 100;
+    let bright_decrease_per_step = initial_brightness / num_steps;
+
+    // Decrease brightness step by step until we've done the proper number of steps
+    let brightness = initial_brightness;
+    for _loops in 0..num_steps {
+        driver.set_matrix_brightness(brightness);
+        let _ = brightness.saturating_sub(bright_decrease_per_step);
+        thread::sleep(core::time::Duration::from_millis(step_delay_ms));
+    }
+}
+
+
+/// Display a fade in animation that simply turns up the display brightness slowly
+fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver) {
+    const TARGET_BRIGHTNESS : u8 = 255;
+    let initial_brightness = driver.get_matrix_brightness();
+    let num_steps: u8 = 50;
+    let step_delay_ms : u64 = 100;
+    let bright_increase_per_step = (TARGET_BRIGHTNESS - initial_brightness) / num_steps;
+
+    // Decrease brightness step by step until we've done the proper number of steps
+    let brightness = initial_brightness;
+    for _loops in 0..num_steps {
+        driver.set_matrix_brightness(brightness);
+        let _ = brightness.saturating_add(bright_increase_per_step);
+        thread::sleep(core::time::Duration::from_millis(step_delay_ms));
+    }
 }

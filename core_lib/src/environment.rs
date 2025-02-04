@@ -37,13 +37,14 @@ pub const FIGHT_SPACE_PERSISTENCE_STEPS : usize = 20;   // Number of time steps 
 // NOTE: THIS INCREASES THE SIZE OF THE IMAGE BY KIND OF A LOT!
 const DEFAULT_ENV_ROWS : usize = 64;
 const DEFAULT_ENV_COLS : usize = 64;
+pub const NUM_DEFAULT_ENVS : usize = 6;
 const DEFAULT_ENV0 : &str = include_str!("../data/default_env1.json");
 const DEFAULT_ENV1 : &str = include_str!("../data/default_env2.json");
 const DEFAULT_ENV2 : &str = include_str!("../data/default_env3.json");
 const DEFAULT_ENV3 : &str = include_str!("../data/default_env4.json");
 const DEFAULT_ENV4 : &str = include_str!("../data/default_env5.json");
 const DEFAULT_ENV5 : &str = include_str!("../data/default_env6.json");
-const DEFAULT_ENVS : [&str; 6] = [
+const DEFAULT_ENVS : [&str; NUM_DEFAULT_ENVS] = [
     DEFAULT_ENV0,
     DEFAULT_ENV1,
     DEFAULT_ENV2,
@@ -296,6 +297,11 @@ impl EnvironmentV1 {
         return temp_env;
 
     }
+
+    /// Public interface to determine how many default environments there are
+    pub fn get_num_default_envs(&self) -> usize {
+        return DEFAULT_ENVS.len();
+    } 
 
     /// Convert this environment to JSON representation for saving/loading
     #[allow(dead_code)]

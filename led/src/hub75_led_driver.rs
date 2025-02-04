@@ -110,6 +110,22 @@ impl RGBLedMatrixDriver {
         } 
     }
 
+    /// Get current brightness setting on the matrix
+    pub fn get_matrix_brightness(&self) -> u8 {
+        let brightness : u8;
+        unsafe {
+            brightness = led_matrix_get_brightness(self.matrix);
+        }
+        return brightness;
+    }
+
+    /// Set brightness of the matrix
+    pub fn set_matrix_brightness(&mut self, brightness : u8) {
+        unsafe {
+            led_matrix_set_brightness(self.matrix, brightness);
+        }
+    }
+
     /// Close the matrix object to stop background process and free up memory.
     /// Properly resets all of the hardware to default state
     /// THIS MUST BE CALLED BEFORE ENDING THE PROGRAM!!

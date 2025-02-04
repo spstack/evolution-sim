@@ -12,6 +12,8 @@ cc = "1.0"
 
 [dependencies]
 core_lib = { path = "../core_lib" }
+rand = "0.8.*"
+ctrlc = "3.4"
 
 [[bin]]
 name = "evsim-led"
