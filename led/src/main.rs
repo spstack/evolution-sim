@@ -156,7 +156,7 @@ fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriv
 
 
 /// Display a fading animation that simply dims the display slowly
-fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver) {
+fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver, env : &EnvironmentV1) {
     let initial_brightness = driver.get_matrix_brightness();
     if initial_brightness == 0 {
         println!("Error: can't perform fade out if display is already off...");
@@ -169,7 +169,13 @@ fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver) {
     // Decrease brightness step by step until we've done the proper number of steps
     let mut brightness = initial_brightness;
     for _loops in 0..num_steps {
+        // Apply new brightness
         driver.set_matrix_brightness(brightness);
+
+        // The way the driver works, brightness is only updated for new pixels, so we have to redraw the image
+        display_env_on_led_panel(env, driver);
+
+        // Drop brightness down
         brightness = brightness.saturating_sub(bright_decrease_per_step);
         thread::sleep(core::time::Duration::from_millis(step_delay_ms));
     }
@@ -177,8 +183,8 @@ fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver) {
 
 
 /// Display a fade in animation that simply turns up the display brightness slowly
-fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver) {
-    const TARGET_BRIGHTNESS : u8 = 255;
+fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver, env : &EnvironmentV1) {
+    const TARGET_BRIGHTNESS : u8 = 100; // brightness is specified in percent
     let initial_brightness = driver.get_matrix_brightness();
     let num_steps: u8 = 50;
     let step_delay_ms : u64 = 100;
@@ -187,8 +193,14 @@ fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver) {
     // Decrease brightness step by step until we've done the proper number of steps
     let mut brightness = initial_brightness;
     for _loops in 0..num_steps {
+        // Apply new brightness
         driver.set_matrix_brightness(brightness);
-        let brightness = brightness.saturating_add(bright_increase_per_step);
+
+        // The way the driver works, brightness is only updated for new pixels, so we have to redraw the image
+        display_env_on_led_panel(env, driver);
+
+        // Increase brightness
+        brightness = brightness.saturating_add(bright_increase_per_step);
         thread::sleep(core::time::Duration::from_millis(step_delay_ms));
     }
 }
