@@ -42,51 +42,51 @@ pub struct RGBLedMatrixOptions {
     pub limit_refresh_rate_hz: ::std::os::raw::c_int,
     pub disable_busy_waiting: bool,
 }
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of RGBLedMatrixOptions"][::std::mem::size_of::<RGBLedMatrixOptions>() - 88usize];
-    ["Alignment of RGBLedMatrixOptions"][::std::mem::align_of::<RGBLedMatrixOptions>() - 8usize];
-    ["Offset of field: RGBLedMatrixOptions::hardware_mapping"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, hardware_mapping) - 0usize];
-    ["Offset of field: RGBLedMatrixOptions::rows"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, rows) - 8usize];
-    ["Offset of field: RGBLedMatrixOptions::cols"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, cols) - 12usize];
-    ["Offset of field: RGBLedMatrixOptions::chain_length"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, chain_length) - 16usize];
-    ["Offset of field: RGBLedMatrixOptions::parallel"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, parallel) - 20usize];
-    ["Offset of field: RGBLedMatrixOptions::pwm_bits"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_bits) - 24usize];
-    ["Offset of field: RGBLedMatrixOptions::pwm_lsb_nanoseconds"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_lsb_nanoseconds) - 28usize];
-    ["Offset of field: RGBLedMatrixOptions::pwm_dither_bits"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_dither_bits) - 32usize];
-    ["Offset of field: RGBLedMatrixOptions::brightness"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, brightness) - 36usize];
-    ["Offset of field: RGBLedMatrixOptions::scan_mode"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, scan_mode) - 40usize];
-    ["Offset of field: RGBLedMatrixOptions::row_address_type"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, row_address_type) - 44usize];
-    ["Offset of field: RGBLedMatrixOptions::multiplexing"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, multiplexing) - 48usize];
-    ["Offset of field: RGBLedMatrixOptions::disable_hardware_pulsing"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, disable_hardware_pulsing) - 52usize];
-    ["Offset of field: RGBLedMatrixOptions::show_refresh_rate"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, show_refresh_rate) - 53usize];
-    ["Offset of field: RGBLedMatrixOptions::inverse_colors"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, inverse_colors) - 54usize];
-    ["Offset of field: RGBLedMatrixOptions::led_rgb_sequence"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, led_rgb_sequence) - 56usize];
-    ["Offset of field: RGBLedMatrixOptions::pixel_mapper_config"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, pixel_mapper_config) - 64usize];
-    ["Offset of field: RGBLedMatrixOptions::panel_type"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, panel_type) - 72usize];
-    ["Offset of field: RGBLedMatrixOptions::limit_refresh_rate_hz"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, limit_refresh_rate_hz) - 80usize];
-    ["Offset of field: RGBLedMatrixOptions::disable_busy_waiting"]
-        [::std::mem::offset_of!(RGBLedMatrixOptions, disable_busy_waiting) - 84usize];
-};
+// #[allow(clippy::unnecessary_operation, clippy::identity_op)]
+// const _: () = {
+//     ["Size of RGBLedMatrixOptions"][::std::mem::size_of::<RGBLedMatrixOptions>() - 88usize];
+//     ["Alignment of RGBLedMatrixOptions"][::std::mem::align_of::<RGBLedMatrixOptions>() - 8usize];
+//     ["Offset of field: RGBLedMatrixOptions::hardware_mapping"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, hardware_mapping) - 0usize];
+//     ["Offset of field: RGBLedMatrixOptions::rows"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, rows) - 8usize];
+//     ["Offset of field: RGBLedMatrixOptions::cols"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, cols) - 12usize];
+//     ["Offset of field: RGBLedMatrixOptions::chain_length"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, chain_length) - 16usize];
+//     ["Offset of field: RGBLedMatrixOptions::parallel"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, parallel) - 20usize];
+//     ["Offset of field: RGBLedMatrixOptions::pwm_bits"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_bits) - 24usize];
+//     ["Offset of field: RGBLedMatrixOptions::pwm_lsb_nanoseconds"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_lsb_nanoseconds) - 28usize];
+//     ["Offset of field: RGBLedMatrixOptions::pwm_dither_bits"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, pwm_dither_bits) - 32usize];
+//     ["Offset of field: RGBLedMatrixOptions::brightness"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, brightness) - 36usize];
+//     ["Offset of field: RGBLedMatrixOptions::scan_mode"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, scan_mode) - 40usize];
+//     ["Offset of field: RGBLedMatrixOptions::row_address_type"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, row_address_type) - 44usize];
+//     ["Offset of field: RGBLedMatrixOptions::multiplexing"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, multiplexing) - 48usize];
+//     ["Offset of field: RGBLedMatrixOptions::disable_hardware_pulsing"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, disable_hardware_pulsing) - 52usize];
+//     ["Offset of field: RGBLedMatrixOptions::show_refresh_rate"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, show_refresh_rate) - 53usize];
+//     ["Offset of field: RGBLedMatrixOptions::inverse_colors"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, inverse_colors) - 54usize];
+//     ["Offset of field: RGBLedMatrixOptions::led_rgb_sequence"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, led_rgb_sequence) - 56usize];
+//     ["Offset of field: RGBLedMatrixOptions::pixel_mapper_config"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, pixel_mapper_config) - 64usize];
+//     ["Offset of field: RGBLedMatrixOptions::panel_type"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, panel_type) - 72usize];
+//     ["Offset of field: RGBLedMatrixOptions::limit_refresh_rate_hz"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, limit_refresh_rate_hz) - 80usize];
+//     ["Offset of field: RGBLedMatrixOptions::disable_busy_waiting"]
+//         [::std::mem::offset_of!(RGBLedMatrixOptions, disable_busy_waiting) - 84usize];
+// };
 #[doc = " Runtime options to simplify doing common things for many programs such as\n dropping privileges and becoming a daemon."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -98,23 +98,23 @@ pub struct RGBLedRuntimeOptions {
     pub drop_priv_user: *const ::std::os::raw::c_char,
     pub drop_priv_group: *const ::std::os::raw::c_char,
 }
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of RGBLedRuntimeOptions"][::std::mem::size_of::<RGBLedRuntimeOptions>() - 32usize];
-    ["Alignment of RGBLedRuntimeOptions"][::std::mem::align_of::<RGBLedRuntimeOptions>() - 8usize];
-    ["Offset of field: RGBLedRuntimeOptions::gpio_slowdown"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, gpio_slowdown) - 0usize];
-    ["Offset of field: RGBLedRuntimeOptions::daemon"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, daemon) - 4usize];
-    ["Offset of field: RGBLedRuntimeOptions::drop_privileges"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_privileges) - 8usize];
-    ["Offset of field: RGBLedRuntimeOptions::do_gpio_init"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, do_gpio_init) - 12usize];
-    ["Offset of field: RGBLedRuntimeOptions::drop_priv_user"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_priv_user) - 16usize];
-    ["Offset of field: RGBLedRuntimeOptions::drop_priv_group"]
-        [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_priv_group) - 24usize];
-};
+// #[allow(clippy::unnecessary_operation, clippy::identity_op)]
+// const _: () = {
+//     ["Size of RGBLedRuntimeOptions"][::std::mem::size_of::<RGBLedRuntimeOptions>() - 32usize];
+//     ["Alignment of RGBLedRuntimeOptions"][::std::mem::align_of::<RGBLedRuntimeOptions>() - 8usize];
+//     ["Offset of field: RGBLedRuntimeOptions::gpio_slowdown"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, gpio_slowdown) - 0usize];
+//     ["Offset of field: RGBLedRuntimeOptions::daemon"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, daemon) - 4usize];
+//     ["Offset of field: RGBLedRuntimeOptions::drop_privileges"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_privileges) - 8usize];
+//     ["Offset of field: RGBLedRuntimeOptions::do_gpio_init"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, do_gpio_init) - 12usize];
+//     ["Offset of field: RGBLedRuntimeOptions::drop_priv_user"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_priv_user) - 16usize];
+//     ["Offset of field: RGBLedRuntimeOptions::drop_priv_group"]
+//         [::std::mem::offset_of!(RGBLedRuntimeOptions, drop_priv_group) - 24usize];
+// };
 #[doc = " 24-bit RGB color."]
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -123,14 +123,14 @@ pub struct Color {
     pub g: u8,
     pub b: u8,
 }
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of Color"][::std::mem::size_of::<Color>() - 3usize];
-    ["Alignment of Color"][::std::mem::align_of::<Color>() - 1usize];
-    ["Offset of field: Color::r"][::std::mem::offset_of!(Color, r) - 0usize];
-    ["Offset of field: Color::g"][::std::mem::offset_of!(Color, g) - 1usize];
-    ["Offset of field: Color::b"][::std::mem::offset_of!(Color, b) - 2usize];
-};
+// #[allow(clippy::unnecessary_operation, clippy::identity_op)]
+// const _: () = {
+//     ["Size of Color"][::std::mem::size_of::<Color>() - 3usize];
+//     ["Alignment of Color"][::std::mem::align_of::<Color>() - 1usize];
+//     ["Offset of field: Color::r"][::std::mem::offset_of!(Color, r) - 0usize];
+//     ["Offset of field: Color::g"][::std::mem::offset_of!(Color, g) - 1usize];
+//     ["Offset of field: Color::b"][::std::mem::offset_of!(Color, b) - 2usize];
+// };
 extern "C" {
     #[doc = " Universal way to create and initialize a matrix.\n The \"options\" struct (if not NULL) contains all default configuration values\n chosen by the programmer to create the matrix.\n\n If \"argc\" and \"argv\" are provided, this function also reads command line\n flags provided, that then can override any of the defaults given.\n The arguments that have been used from the command line are removed from\n the argv list (and argc is adjusted) - that way these don't mess with your\n own command line handling.\n\n The actual options used are filled back into the \"options\" struct if not\n NULL.\n\n Usage:\n ----------------\n int main(int argc, char **argv) {\n   struct RGBLedMatrixOptions options;\n   memset(&options, 0, sizeof(options));\n   options.rows = 32;            // You can set defaults if you want.\n   options.chain_length = 1;\n   struct RGBLedMatrix *matrix = led_matrix_create_from_options(&options,\n                                                                &argc, &argv);\n   if (matrix == NULL) {\n      led_matrix_print_flags(stderr);\n      return 1;\n   }\n   // do additional commandline handling; then use matrix...\n }\n ----------------"]
     pub fn led_matrix_create_from_options(

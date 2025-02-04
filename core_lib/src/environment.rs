@@ -37,7 +37,6 @@ pub const FIGHT_SPACE_PERSISTENCE_STEPS : usize = 20;   // Number of time steps 
 // NOTE: THIS INCREASES THE SIZE OF THE IMAGE BY KIND OF A LOT!
 const DEFAULT_ENV_ROWS : usize = 64;
 const DEFAULT_ENV_COLS : usize = 64;
-const NUM_DEFAULT_ENVIRONMENTS : usize = 6;
 const DEFAULT_ENV0 : &str = include_str!("../data/default_env1.json");
 const DEFAULT_ENV1 : &str = include_str!("../data/default_env2.json");
 const DEFAULT_ENV2 : &str = include_str!("../data/default_env3.json");
