@@ -23,7 +23,7 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
-const MAX_TIME_STEPS_PER_SIM : usize = 100;
+const MAX_TIME_STEPS_PER_SIM : usize = 150;
 const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with
@@ -69,6 +69,8 @@ fn main() {
 
     // Run visualizations forever
     loop {
+        // TODO: Figure out why we need to run this twice in a row right after en env is created...
+        env.advance_step();
 
         // Run the simulation until there are no more creatures left!
         while env.num_creatures > 0 && env.time_step < MAX_TIME_STEPS_PER_SIM {
@@ -165,10 +167,10 @@ fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver) {
     let bright_decrease_per_step = initial_brightness / num_steps;
 
     // Decrease brightness step by step until we've done the proper number of steps
-    let brightness = initial_brightness;
+    let mut brightness = initial_brightness;
     for _loops in 0..num_steps {
         driver.set_matrix_brightness(brightness);
-        let _ = brightness.saturating_sub(bright_decrease_per_step);
+        brightness = brightness.saturating_sub(bright_decrease_per_step);
         thread::sleep(core::time::Duration::from_millis(step_delay_ms));
     }
 }
@@ -183,10 +185,10 @@ fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver) {
     let bright_increase_per_step = (TARGET_BRIGHTNESS - initial_brightness) / num_steps;
 
     // Decrease brightness step by step until we've done the proper number of steps
-    let brightness = initial_brightness;
+    let mut brightness = initial_brightness;
     for _loops in 0..num_steps {
         driver.set_matrix_brightness(brightness);
-        let _ = brightness.saturating_add(bright_increase_per_step);
+        let brightness = brightness.saturating_add(bright_increase_per_step);
         thread::sleep(core::time::Duration::from_millis(step_delay_ms));
     }
 }
