@@ -23,7 +23,7 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
-const MAX_TIME_STEPS_PER_SIM : usize = 150;
+const MAX_TIME_STEPS_PER_SIM : usize = 5000;
 const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with
@@ -95,7 +95,7 @@ fn main() {
         }
 
         // Ok, so the sim has ended. Display a fading animation
-        display_fade_out_animation(&mut driver);
+        display_fade_out_animation(&mut driver, &env);
 
         // Ok, now start a new random simulation
         // This block here really only serves to generate a random environment, but with the chance
@@ -111,7 +111,7 @@ fn main() {
         display_env_on_led_panel(&env, &mut driver);
 
         // Once the display is updated, slowly fade in
-        display_fade_in_animation(&mut driver);
+        display_fade_in_animation(&mut driver, &env);
     }
   
     // Make sure to close the driver and reset the hardware before quitting!
