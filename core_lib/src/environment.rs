@@ -37,20 +37,25 @@ pub const FIGHT_SPACE_PERSISTENCE_STEPS : usize = 20;   // Number of time steps 
 // NOTE: THIS INCREASES THE SIZE OF THE IMAGE BY KIND OF A LOT!
 const DEFAULT_ENV_ROWS : usize = 64;
 const DEFAULT_ENV_COLS : usize = 64;
-pub const NUM_DEFAULT_ENVS : usize = 6;
+pub const NUM_DEFAULT_ENVS : usize = 8;
 const DEFAULT_ENV0 : &str = include_str!("../data/default_env1.json");
 const DEFAULT_ENV1 : &str = include_str!("../data/default_env2.json");
 const DEFAULT_ENV2 : &str = include_str!("../data/default_env3.json");
 const DEFAULT_ENV3 : &str = include_str!("../data/default_env4.json");
 const DEFAULT_ENV4 : &str = include_str!("../data/default_env5.json");
 const DEFAULT_ENV5 : &str = include_str!("../data/default_env6.json");
+const DEFAULT_ENV6 : &str = include_str!("../data/default_env7.json");
+const DEFAULT_ENV7 : &str = include_str!("../data/default_env8.json");
 const DEFAULT_ENVS : [&str; NUM_DEFAULT_ENVS] = [
     DEFAULT_ENV0,
     DEFAULT_ENV1,
     DEFAULT_ENV2,
     DEFAULT_ENV3,
     DEFAULT_ENV4,
-    DEFAULT_ENV5];
+    DEFAULT_ENV5,
+    DEFAULT_ENV6,
+    DEFAULT_ENV7,
+    ];
 
 //===============================================================================
 // Environment V1 Declarations

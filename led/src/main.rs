@@ -23,7 +23,7 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
-const MAX_TIME_STEPS_PER_SIM : usize = 5000;
+const MAX_TIME_STEPS_PER_SIM : usize = 10000;
 const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with

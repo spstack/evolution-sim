@@ -18,7 +18,7 @@ pub const MAX_POSSIBLE_ENERGY : usize = 200;
 pub const MAX_POSSIBLE_AGE : usize = 100;
 
 pub const DEFAULT_REPRODUCE_AGE : usize = 22;                // Default age at which creature will reproduce
-pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 40, 255];   // Default color each creature will be (blue)
+pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 75, 255];   // Default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
 pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
