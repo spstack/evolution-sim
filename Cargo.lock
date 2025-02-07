@@ -79,7 +79,7 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
 name = "console"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "core_lib",
  "ctrlc",
@@ -88,7 +88,7 @@ dependencies = [
 
 [[package]]
 name = "core_lib"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "num",
  "rand",
@@ -163,7 +163,7 @@ checksum = "9e05e7e6723e3455f4818c7b26e855439f7546cf617ef669d1adedb8669e5cb9"
 
 [[package]]
 name = "gui"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "core_lib",
  "macroquad",
@@ -199,7 +199,7 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "led"
-version = "0.2.0"
+version = "1.0.0"
 dependencies = [
  "cc",
  "core_lib",

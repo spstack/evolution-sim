@@ -11,7 +11,7 @@ members = [ "console",
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "1.0.0"
 authors = ["Scott Stack"]
 edition = "2021"
 description = "A program that simulates evolution of little pixel creatures!"

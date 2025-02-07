@@ -15,6 +15,28 @@ I'm just going for basic functionality at this point.
 
 ![example screenshot](images/evolution_sim.gif)
 
+
+# Running the Simulation
+
+There are a couple different visualization methods all built on a core library:
+
+Main GUI visualization that uses macroquad
+```
+cargo run -p gui
+```
+
+Console visualization
+```
+cargo run -p console
+```
+
+LED visualization that is meant to be run on a raspberry pi connected to a HUB75 LED matrix like this one: https://www.adafruit.com/product/4732
+```
+cargo run -p led
+```
+
+# Details
+
 The basic rules are that each creature has an energy level, and when that energy reaches zero or the creature reaches a maximum age,
 the creature dies. A creature performs one action each step, and different actions require differing amounts of energy.
  When a creature dies, it leaves behind a food piece. If the creature consumes a food piece, they get 
@@ -38,7 +60,6 @@ Then the neural net is evaluated, and the creature chooses one output "Action" t
 * Kill
 
 If a creature chooses the "kill" action, it will only work if there is another creature directly in front of it. That target creature is automatically consumed for food and the hunting creature is turned a slightly more red color. This color is reflected in the vision of other creatures, so that others can tell the difference between a violent and non-violent creature. This allows for various survival strategies to emerge. The kill action still costs energy regardless of whether it is successful.
-
 
 
 
