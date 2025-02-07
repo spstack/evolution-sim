@@ -32,12 +32,12 @@ const DEFAULT_PARAMS : EnvironmentParams = EnvironmentParams {
     env_y_size : 64, // THIS MUST BE SIZE OF PANEL!
     num_start_creatures : 100,  
     num_start_food : 150,
-    num_start_walls : 200,
+    num_start_walls : 250,
     energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
     energy_per_kill : DEFAULT_ENERGY_PER_KILL,
-    max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
+    max_offspring_per_reproduce : 2,
     mutation_prob : DEFAULT_MUTATION_PROB,
-    avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP, 
+    avg_new_food_per_day : 1.0,
     creature_repro_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
     creature_starting_energy : DEFAULT_ENERGY_LEVEL,
 };
