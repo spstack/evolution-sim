@@ -23,7 +23,7 @@ const FOOD_SPACE_COLOR : Color = Color{r: 0, g: 200, b: 0};
 const WALL_SPACE_COLOR : Color = Color{r: 200, g: 200, b: 200};
 const FIGHT_SPACE_COLOR : Color = Color{r: 20, g: 0, b: 0};
 
-const MAX_TIME_STEPS_PER_SIM : usize = 10000;
+const MAX_TIME_STEPS_PER_SIM : usize = 100000;
 const STEP_TIME_DELAY : u64 = 250;
 
 // Default parameters that the LED simulation visualization will start with
@@ -35,9 +35,9 @@ const DEFAULT_PARAMS : EnvironmentParams = EnvironmentParams {
     num_start_walls : 250,
     energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
     energy_per_kill : DEFAULT_ENERGY_PER_KILL,
-    max_offspring_per_reproduce : 2,
+    max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
     mutation_prob : DEFAULT_MUTATION_PROB,
-    avg_new_food_per_day : 1.0,
+    avg_new_food_per_day : NEW_FOOD_PIECES_PER_STEP,
     creature_repro_energy_cost : DEFAULT_REPRODUCE_ENERGY_COST,
     creature_starting_energy : DEFAULT_ENERGY_LEVEL,
 };

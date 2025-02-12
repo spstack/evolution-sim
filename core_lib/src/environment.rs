@@ -17,12 +17,12 @@ pub const DEBUG_LEVEL : usize = 0;
 
 // Env parameters
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
-pub const DEFAULT_ENERGY_PER_KILL : usize = 20;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
+pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
-pub const NEW_FOOD_PIECES_PER_STEP : f32 = 3.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
+pub const NEW_FOOD_PIECES_PER_STEP : f32 = 1.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
-pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 3;  // Number of offspring that each creature will have upon each reproduction event
+pub const DEFAULT_OFFSPRING_PER_REPRODUCE : usize = 2;  // Number of offspring that each creature will have upon each reproduction event
 pub const MAX_OFFSPRING_SPAWN_DIST : isize = 3;         // Max distance (in spaces) that a creatures offspring will spawn from the parent
 
 // Vision params
