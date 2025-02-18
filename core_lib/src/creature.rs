@@ -142,7 +142,7 @@ impl CreatureParams {
 /// Version 1 of a simple creature. It contains all of the state information about a creature
 /// The environment that creates the creature should call ``
 #[derive(Serialize, Deserialize, Clone)]
-pub struct CreatureV1 {
+pub struct Creature {
     /// Input parameters to the creature
     pub params : CreatureParams,
 
@@ -187,16 +187,16 @@ pub struct CreatureV1 {
     output_neuron_types : Vec<CreatureActions>,
 }
 
-impl CreatureV1 {
+impl Creature {
 
     // ============= CONSTRUCTORS ================
 
     /// Constructor returns creature instance w/ default values
-    pub fn new(id : usize, inparams : &CreatureParams) -> CreatureV1 {
+    pub fn new(id : usize, inparams : &CreatureParams) -> Creature {
         let input_neuron_types = ENABLED_CREATURE_INPUTS.to_vec();
         let output_neuron_types = ENABLED_CREATURE_ACTIONS.to_vec();
 
-        let temp_creature = CreatureV1 {
+        let temp_creature = Creature {
             params : inparams.clone(),
             brain : Brain::new(&input_neuron_types,&output_neuron_types),
             id : id,
@@ -218,9 +218,9 @@ impl CreatureV1 {
     }
 
     /// Constructor to create a new creature from a provided parent (genes copied with optional mutations)
-    pub fn new_offspring(id : usize, parent : &CreatureV1, mutation_prob : f32) -> CreatureV1 {
+    pub fn new_offspring(id : usize, parent : &Creature, mutation_prob : f32) -> Creature {
 
-        let mut temp_creature = CreatureV1 {
+        let mut temp_creature = Creature {
             params : parent.params.clone(),
             brain : Brain::new_copy(&parent.brain, mutation_prob),
             id : id,
@@ -247,10 +247,10 @@ impl CreatureV1 {
 
     /// Constructor to create a new creature from a JSON string
     #[allow(dead_code)]
-    pub fn new_from_json(id : usize, json_in : &str) -> serde_json::Result<CreatureV1> {
+    pub fn new_from_json(id : usize, json_in : &str) -> serde_json::Result<Creature> {
         // This is pretty neat we can basically just tell serde_json to copy all
         // fields into a given structure.
-        let mut temp_creature : CreatureV1 = serde_json::from_str(json_in)?;
+        let mut temp_creature : Creature = serde_json::from_str(json_in)?;
 
         // Set the ID to the new value
         temp_creature.id = id;
@@ -516,9 +516,9 @@ pub struct Brain {
 // Define the number and size of internal layers in the brain neural net
 // (input/output will be overwritten by the constructor)
 const PLACEHOLDER_NUM_NODES : usize = 0;
-const BRAIN_V2_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 6, 6, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 6 neurons each. First/Last layer sizes will be specified by constructor
-const BRAIN_V2_MIN_INIT_NODE_VAL : f32 = -25.0;  // Min initial value that a node will take
-const BRAIN_V2_MAX_INIT_NODE_VAL : f32 = 25.0;   // Max initial value that a node will take 
+const BRAIN_LAYER_SIZES : [usize; 4] = [PLACEHOLDER_NUM_NODES, 10, 10, PLACEHOLDER_NUM_NODES]; // 2 internal layers with 6 neurons each. First/Last layer sizes will be specified by constructor
+const BRAIN_MIN_INIT_NODE_VAL : f32 = -50.0;  // Min initial value that a node will take
+const BRAIN_MAX_INIT_NODE_VAL : f32 = 50.0;   // Max initial value that a node will take 
 
 impl Brain {
 
@@ -529,12 +529,12 @@ impl Brain {
     /// * `output_node_types` is a vector mapping the output neuron idx to which type of action it is. It
     /// also determines the number of neurons in the output layer by it's size
     pub fn new(input_node_types : &Vec<CreatureInputs>, output_node_types : &Vec<CreatureActions>) -> Brain {
-        let mut layer_sizes  = BRAIN_V2_LAYER_SIZES.to_vec();
+        let mut layer_sizes  = BRAIN_LAYER_SIZES.to_vec();
         let output_layer_idx = layer_sizes.len() - 1;
         layer_sizes[0] = input_node_types.len();
         layer_sizes[output_layer_idx] = output_node_types.len();
         return Brain {
-            net : NeuralNet::new(&layer_sizes, BRAIN_V2_MIN_INIT_NODE_VAL, BRAIN_V2_MAX_INIT_NODE_VAL),
+            net : NeuralNet::new(&layer_sizes, BRAIN_MIN_INIT_NODE_VAL, BRAIN_MAX_INIT_NODE_VAL),
             input_node_types : input_node_types.clone(), 
             output_node_types : output_node_types.clone(),
         };
@@ -546,7 +546,7 @@ impl Brain {
 
         // Copy the neural net and apply random mutations to it
         let mut nn = other_brain.net.clone();
-        nn.apply_rand_mutations(mutation_prob, BRAIN_V2_MIN_INIT_NODE_VAL, BRAIN_V2_MAX_INIT_NODE_VAL);
+        nn.apply_rand_mutations(mutation_prob, BRAIN_MIN_INIT_NODE_VAL, BRAIN_MAX_INIT_NODE_VAL);
 
         return Brain {
             net : nn,

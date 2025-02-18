@@ -134,7 +134,7 @@ pub struct EnvironmentV1 {
     pub params : EnvironmentParams,     // All parameters that can be specified when creating a new env 
 
     // Current state
-    pub creatures : Vec<CreatureV1>,    // Vector containing all creature instances
+    pub creatures : Vec<Creature>,    // Vector containing all creature instances
     pub positions : Vec<Vec<SpaceStates>>, // Contains the states of each space.
     pub time_step : usize,              // Represents the current time step in the sim
     pub num_food : usize,               // Number of current food pieces on the board
@@ -177,7 +177,7 @@ impl EnvironmentV1 {
         let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
 
         // Initialize creature vector
-        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(in_params.num_start_creatures);
+        let temp_creature_vec = Vec::<Creature>::with_capacity(in_params.num_start_creatures);
         let num_spaces = in_params.env_x_size * in_params.env_y_size;
 
         // Create temporary environment, transferring ownership of vectors
@@ -228,7 +228,7 @@ impl EnvironmentV1 {
         // Fill in random spaces with creatures
         for creature_num in 0..in_params.num_start_creatures {
             // Create creature
-            let mut creature = CreatureV1::new(creature_num, &CreatureParams::new());
+            let mut creature = Creature::new(creature_num, &CreatureParams::new());
 
             // Set few parameters of the new creature
             let pos = temp_env.get_rand_blank_space();
@@ -262,7 +262,7 @@ impl EnvironmentV1 {
         let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
 
         // Initialize creature vector
-        let temp_creature_vec = Vec::<CreatureV1>::with_capacity(in_params.num_start_creatures);
+        let temp_creature_vec = Vec::<Creature>::with_capacity(in_params.num_start_creatures);
         let num_spaces = in_params.env_x_size * in_params.env_y_size;
 
         // Create temporary environment, transferring ownership of vectors
@@ -289,7 +289,7 @@ impl EnvironmentV1 {
         // Fill in random spaces with creatures
         for creature_num in 0..in_params.num_start_creatures {
             // Create creature
-            let mut creature = CreatureV1::new(creature_num, &CreatureParams::new());
+            let mut creature = Creature::new(creature_num, &CreatureParams::new());
 
             // Set few parameters of the new creature
             let pos = temp_env.get_rand_blank_space();
@@ -505,7 +505,7 @@ impl EnvironmentV1 {
         let mut rng = rand::thread_rng();
 
         // Create a temporary variable to hold new creatures that will spawn
-        let mut temp_new_creatures : Vec<CreatureV1> = Vec::new();
+        let mut temp_new_creatures : Vec<Creature> = Vec::new();
 
         // Evaluate the next action for each creature
         for creature_idx in 0..self.creatures.len() {
@@ -572,7 +572,7 @@ impl EnvironmentV1 {
                         println!("Creature {} is reproducing with {} offspring!", creature_copy.id, num_offspring);
                     }
                     for _offspring_num in 0..num_offspring {
-                        let new_offspring = CreatureV1::new_offspring(self.num_total_creatures, &self.creatures[creature_idx], self.params.mutation_prob);
+                        let new_offspring = Creature::new_offspring(self.num_total_creatures, &self.creatures[creature_idx], self.params.mutation_prob);
                         self.num_total_creatures += 1;
                         temp_new_creatures.push(new_offspring);
                     }
@@ -695,7 +695,7 @@ impl EnvironmentV1 {
     }
 
     /// Add single creature to the environment at position specified by creature itself
-    pub fn add_creature(&mut self, new_creature : CreatureV1) {
+    pub fn add_creature(&mut self, new_creature : Creature) {
         // Note: allow overwriting of other types of spaces for creatures
 
         self.positions[new_creature.position.x][new_creature.position.y] = SpaceStates::CreatureSpace(new_creature.id);

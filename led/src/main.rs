@@ -58,7 +58,6 @@ fn main() {
         // All this just to set a flag...
         let _ = ctrlc_handler_flag.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |_| return Some(true));
         println!("Crtl-C received...exiting");
-        // process::exit(0);
     }).expect("Error setting Ctrl-C handler");
 
     // Load a random default environment. This API allows selecting from a numbered list

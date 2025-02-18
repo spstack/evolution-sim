@@ -287,7 +287,7 @@ impl EnvMacroquad {
                 match self.env.positions[x][y] {
                     SpaceStates::CreatureSpace(id) => {
                         let c_id = self.env.get_creature_idx_from_id(id).unwrap(); 
-                        let creature : &CreatureV1 = &self.env.creatures[c_id];
+                        let creature : &Creature = &self.env.creatures[c_id];
                         self.draw_creature_square(x, y, creature.orientation, creature.color);
                     }
                     SpaceStates::FoodSpace => self.draw_food_space(x, y),
