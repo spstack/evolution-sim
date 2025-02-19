@@ -8,29 +8,36 @@
 
 // Define external crates to use in this module
 use std::fmt::Debug;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 //===============================================================================
 // CONSTANTS
 //===============================================================================
-pub const DEFAULT_ENERGY_LEVEL : usize = 40;
-pub const MAX_POSSIBLE_ENERGY : usize = 200;
-pub const MAX_POSSIBLE_AGE : usize = 100;
 
-pub const DEFAULT_REPRODUCE_AGE : usize = 22;                // Default age at which creature will reproduce
-pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 75, 255];   // Default color each creature will be (blue)
+// Creature default params
+pub const DEFAULT_ENERGY_LEVEL : usize = 40;                // Starting amount of energy a creature is "born" with
+pub const MAX_POSSIBLE_ENERGY : usize = 200;                // Max possible energy a creature can have
+pub const MAX_POSSIBLE_AGE : usize = 200;                   // Max possible age a creature can be
+pub const DEFAULT_REPRODUCE_AGE : usize = 22;               // Default age at which creature will reproduce
+pub const DEFAULT_CREATURE_COLOR : [u8; 3] = [0, 75, 255];  // Default color each creature will be (blue)
 pub const DEFAULT_ORIENTATION : CreatureOrientation = CreatureOrientation::Up; // Which way creature will face by default
 pub const DEFAULT_MIN_REPRODUCE_ENERGY : usize = DEFAULT_ENERGY_LEVEL + 1;  // Minimum energy a creature should have to trigger a reproduce event.
 pub const DEFAULT_REPRODUCE_ENERGY_COST : usize = DEFAULT_ENERGY_LEVEL;     // Default amount of energy it takes to reproduce
                                                                             // Intent is that this should be greater than the starting energy, so that creatures only reproduce when they find food
+// Energy cost params
 pub const DEFAULT_MOVE_ENERGY_COST : usize = 1;             // Default amount of energy it takes to move one space
 pub const DEFAULT_ROTATE_ENERGY_COST : usize = 1;           // Default amount of energy it takes to rotate
 pub const DEFAULT_KILL_ENERGY_COST : usize = 1;             // Default amount of energy it takes to perform a kill action
 
-
+// Mist constants
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
 
-const DEBUG_LEVEL : usize = 0;  // Debug print level (higher number = more detail)
+const COLOR_MODE_VIOLENCE : bool = false;                   // Set this switch to `true` to make creature color depend on how violent the creature is rather than just inherited color with random mutation
+const MIN_COLOR_DEVIATION : i8 = -50;                    // Minimum amount each color can change by when reproducing
+const MAX_COLOR_DEVIATION : i8 = 50;                     // Maximum amount each color can change by when reproducing
+
+const DEBUG_LEVEL : usize = 0;                              // Debug print level (higher number = more detail)
 
 
 /// Defines the possible actions that a creature of any type can take
@@ -222,7 +229,7 @@ impl Creature {
 
         let mut temp_creature = Creature {
             params : parent.params.clone(),
-            brain : Brain::new_copy(&parent.brain, mutation_prob),
+            brain : Brain::new_copy(&parent.brain, mutation_prob), // this creatures a copy of the brain while randomly mutating each weight/bias
             id : id,
             is_alive : true,
             killed : false,
@@ -238,8 +245,13 @@ impl Creature {
             output_neuron_types : parent.output_neuron_types.clone(),
         };
 
-        // Since this creature hasn't killed yet, change it's color a bit to indicate it's more docile (until proven otherwise)
-        temp_creature.unset_killer();
+        if COLOR_MODE_VIOLENCE {
+            // Since this creature hasn't killed yet, change it's color a bit to indicate it's more docile (until proven otherwise)
+            temp_creature.unset_killer();
+        } else {
+            // randomly apply a color change with probability `mutation_prob`
+            temp_creature.apply_random_color_mutation(mutation_prob);
+        }
 
         return temp_creature;
     }
@@ -256,6 +268,49 @@ impl Creature {
         temp_creature.id = id;
 
         return Ok(temp_creature);
+    }
+
+    /// Apply a random mutation to color of the creature (used when reproducing)
+    /// The mutation prob defines how likely it is that each of the red/greed/blue components
+    /// are mutated at all. The amount of mutation is bounded by `[MIN|MAX]_COLOR_DEVIATION` params
+    pub fn apply_random_color_mutation(&mut self, mutation_prob : f32) {
+        let mut rng = rand::thread_rng();
+
+        // Randomly mutate each color by a random amount
+        if rng.gen::<f32>() <= mutation_prob {
+            let deviation_val = rng.gen_range(MIN_COLOR_DEVIATION..=MAX_COLOR_DEVIATION);
+            if deviation_val < 0 {
+                self.color.red = self.color.red.saturating_sub(-deviation_val as u8);
+            } else {
+                self.color.red = self.color.red.saturating_add(deviation_val as u8);
+            }
+        }
+        if rng.gen::<f32>() <= mutation_prob {
+            let deviation_val = rng.gen_range(MIN_COLOR_DEVIATION..=MAX_COLOR_DEVIATION);
+            if deviation_val < 0 {
+                self.color.green = self.color.green.saturating_sub(-deviation_val as u8);
+            } else {
+                self.color.green = self.color.green.saturating_add(deviation_val as u8);
+            }
+        }
+        if rng.gen::<f32>() <= mutation_prob {
+            let deviation_val = rng.gen_range(MIN_COLOR_DEVIATION..=MAX_COLOR_DEVIATION);
+            if deviation_val < 0 {
+                self.color.blue = self.color.blue.saturating_sub(-deviation_val as u8);
+            } else {
+                self.color.blue = self.color.blue.saturating_add(deviation_val as u8);
+            }
+        }
+
+        // Scale the colors so that they at least reach a minimum brightness
+        // This protects against the creatures becoming invisible (all black)
+        let color_sum = self.color.red as usize + self.color.blue as usize + self.color.green as usize;
+        if color_sum < 255 {
+            let brightness_diff = (255 - color_sum) / 3;
+            self.color.red += brightness_diff as u8;
+            self.color.green += brightness_diff as u8;
+            self.color.blue += brightness_diff as u8;
+        }
     }
 
     // ============= ENVIRONMENT INTERFACE FUNCTIONS ================
@@ -295,13 +350,17 @@ impl Creature {
 
     /// Mark this creature as a killer (carnivore). This changes it's color a bit to indicate to others that it's dangerous
     pub fn set_killer(&mut self) {
-        self.color.red = self.color.red.saturating_add(10);
-        self.color.blue = self.color.blue.saturating_sub(10);
+        if COLOR_MODE_VIOLENCE {
+            self.color.red = self.color.red.saturating_add(10);
+            self.color.blue = self.color.blue.saturating_sub(10);
+        }
     }
 
     pub fn unset_killer(&mut self) {
-        self.color.red = self.color.red.saturating_sub(10);
-        self.color.blue = self.color.blue.saturating_add(10);
+        if COLOR_MODE_VIOLENCE {
+            self.color.red = self.color.red.saturating_sub(10);
+            self.color.blue = self.color.blue.saturating_add(10);
+        }
     }
 
     /// Returns true if the creature is dead and false if it is alive
