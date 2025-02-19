@@ -102,7 +102,7 @@ pub struct LoadOptions {
 /// Environment
 pub struct EnvMacroquad {
     params : SimParameters,     // Constant values that sim is initialized with
-    pub env : EnvironmentV1,    // Contains the whole environment
+    pub env : Environment,    // Contains the whole environment
 
     // Sim state
     pub state : SimState,       // Current state of the sim (running/stopped)
@@ -175,7 +175,7 @@ impl EnvMacroquad {
             },
 
             // Generate the environment given the parameters
-            env : EnvironmentV1::new_rand(&temp_env_params),
+            env : Environment::new_rand(&temp_env_params),
 
             // State
             state : SimState::RUNNING,
@@ -238,7 +238,7 @@ impl EnvMacroquad {
         if self.update_params_from_text() {
 
             // Generate a new environment with new params
-            self.env = EnvironmentV1::new_rand(&self.env.params);
+            self.env = Environment::new_rand(&self.env.params);
         }
     }
 
@@ -392,7 +392,7 @@ impl EnvMacroquad {
             // Handle clicking to draw new space
             if is_mouse_button_down(MouseButton::Left) {
                 if env_x < self.env.params.env_x_size && env_y < self.env.params.env_y_size {
-                    let pos = CreaturePosition {x : env_x, y : env_y};
+                    let pos = Position {x : env_x, y : env_y};
                     match self.current_draw_space_type {
                         None => (),
                         Some(SpaceStates::FoodSpace) => self.env.add_food_space(pos),

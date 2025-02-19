@@ -129,33 +129,35 @@ impl EnvironmentParams {
 
 /// Structure representing a very simple 2-D environment
 #[derive(Serialize, Deserialize, Clone)]
-pub struct EnvironmentV1 {
+pub struct Environment {
     // Parameters
     pub params : EnvironmentParams,     // All parameters that can be specified when creating a new env 
 
     // Current state
-    pub creatures : Vec<Creature>,    // Vector containing all creature instances
-    pub positions : Vec<Vec<SpaceStates>>, // Contains the states of each space.
-    pub time_step : usize,              // Represents the current time step in the sim
+    pub creatures : Vec<Creature>,          // Vector containing all creature instances
+    pub positions : Vec<Vec<SpaceStates>>,  // Contains the states of each space.
+    pub blank_spaces : Vec<Position>,    // Vector containing locations of all blank spaces (for quickly choosing random blank locations)
+    pub time_step : usize,                  // Represents the current time step in the sim
+
+    // Stats
     pub num_food : usize,               // Number of current food pieces on the board
     pub num_creatures : usize,          // Number of living creatures on the board
     pub num_blank : usize,              // Number of blank spaces on the board
     pub num_walls : usize,              // Number of wall spaces on the board (should be the same as the start parameter, but used for sanity check)
     pub num_total_creatures : usize,    // Number of total creatures created throughout sim
-
     pub num_kills : usize,              // Number of creatures killed
     pub num_natural_deaths: usize,      // Number of creatures that've died of "old age"
 }
 
 
 
-/// Implementation of EnvironmentV1
-impl EnvironmentV1 {
+/// Implementation of Environment
+impl Environment {
 
     /// Get a new random environment that uses one of the built in default wall layouts
     /// in_params - the input environment parameters to use
     /// default_env_num - which built-in environment to load (Specify None for completely random)
-    pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : Option<usize>) -> EnvironmentV1 {
+    pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : Option<usize>) -> Environment {
 
         // Sanity check the inputs
         match default_env_num {
@@ -170,26 +172,17 @@ impl EnvironmentV1 {
             None => (), // No bounds checking to be done
         }
 
-        // Initialize rng
-        let mut rng = rand::thread_rng();
-
-        // Initialize all positions to be blank at first
-        let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
-
-        // Initialize creature vector
-        let temp_creature_vec = Vec::<Creature>::with_capacity(in_params.num_start_creatures);
-        let num_spaces = in_params.env_x_size * in_params.env_y_size;
-
-        // Create temporary environment, transferring ownership of vectors
-        let mut temp_env = EnvironmentV1 {
+        // Create temporary env that we will populate
+        let mut temp_env = Environment {
             params: in_params.clone(),
-            creatures : temp_creature_vec,
-            positions : temp_positions,
+            creatures : Vec::<Creature>::with_capacity(in_params.num_start_creatures),
+            positions : vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size],
+            blank_spaces : Vec::new(),
             time_step : 0,
-            num_food : 0, // set to zero as these will be added later
+            num_food : 0,
             num_creatures : 0,
             num_walls : 0,
-            num_blank : num_spaces,
+            num_blank : in_params.env_x_size * in_params.env_y_size,
             num_total_creatures : in_params.num_start_creatures,
             num_kills : 0,
             num_natural_deaths : 0,
@@ -212,42 +205,19 @@ impl EnvironmentV1 {
 
             // Load random set of walls
             None => {
+                let mut rng = rand::thread_rng();
                 for _wall_num in 0..in_params.num_start_walls {
-                    let pos = temp_env.get_rand_blank_space();
+                    let pos = temp_env.get_rand_blank_space().unwrap();
                     temp_env.add_wall_space(pos);
                 }
             }
         }
 
-        // Fill in random spaces with food
-        for _food_num in 0..in_params.num_start_food {
-            let pos = temp_env.get_rand_blank_space();
-            temp_env.add_food_space(pos);
-        }
+        // Fill the board - don't randomly generate walls though. We already did that
+        temp_env.initialize_with_rand_spaces(true, true, false);
 
-        // Fill in random spaces with creatures
-        for creature_num in 0..in_params.num_start_creatures {
-            // Create creature
-            let mut creature = Creature::new(creature_num, &CreatureParams::new());
-
-            // Set few parameters of the new creature
-            let pos = temp_env.get_rand_blank_space();
-            creature.set_position(pos.x, pos.y);
-
-            // Set random initial orientation
-            let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
-            let orientation = match orient {
-                0 => CreatureOrientation::Up,
-                1 => CreatureOrientation::Right,
-                2 => CreatureOrientation::Down,
-                3 => CreatureOrientation::Left,
-                _ => panic!("Invalid initial random orientation! Update the number of states"),
-            };
-            creature.set_orientation(orientation);
-
-            // Add it to the board
-            temp_env.add_creature(creature);
-        }
+        // Update the statistics to make sure everything is internally consistent
+        temp_env.update_space_counters(); 
 
         return temp_env;
 
@@ -255,68 +225,81 @@ impl EnvironmentV1 {
     }
 
     /// Constructor for new environment instance that's randomly populated
-    pub fn new_rand(in_params : &EnvironmentParams) -> EnvironmentV1 {
-        let mut rng = rand::thread_rng();
-
-        // Initialize all positions to be blank at first
-        let temp_positions = vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size];
-
-        // Initialize creature vector
-        let temp_creature_vec = Vec::<Creature>::with_capacity(in_params.num_start_creatures);
-        let num_spaces = in_params.env_x_size * in_params.env_y_size;
+    pub fn new_rand(in_params : &EnvironmentParams) -> Environment {
 
         // Create temporary environment, transferring ownership of vectors
-        let mut temp_env = EnvironmentV1 {
+        let mut temp_env = Environment {
             params: in_params.clone(),
-            creatures : temp_creature_vec,
-            positions : temp_positions,
+            creatures : Vec::<Creature>::with_capacity(in_params.num_start_creatures),
+            positions : vec![vec![SpaceStates::BlankSpace; in_params.env_y_size]; in_params.env_x_size],
+            blank_spaces : Vec::new(),
             time_step : 0,
-            num_food : 0, // set to zero as these will be added later
+            num_food : 0,
             num_creatures : 0,
             num_walls : 0,
-            num_blank : num_spaces,
+            num_blank : in_params.env_x_size * in_params.env_y_size,
             num_total_creatures : in_params.num_start_creatures,
             num_kills : 0,
             num_natural_deaths : 0,
         };
 
+        // Fill the board
+        temp_env.initialize_with_rand_spaces(true, true, true);
+
+        // Update the statistics to make sure everything is internally consistent
+        temp_env.update_space_counters();
+
+        return temp_env;
+
+    }
+
+    /// Used to populate a newly created environment with new random spaces
+    /// based on the settings in params. This is a helper function used in
+    /// the constructors
+    fn initialize_with_rand_spaces(&mut self, add_food : bool, add_creatures : bool, add_walls : bool) {
+        let mut rng = rand::thread_rng();
+
         // Fill in random spaces with food
-        for _food_num in 0..in_params.num_start_food {
-            let pos = temp_env.get_rand_blank_space();
-            temp_env.add_food_space(pos);
+        if add_food {
+            for _food_num in 0..self.params.num_start_food {
+                let pos = self.get_rand_blank_space().unwrap();
+                self.add_food_space(pos);
+            }
         }
 
         // Fill in random spaces with creatures
-        for creature_num in 0..in_params.num_start_creatures {
-            // Create creature
-            let mut creature = Creature::new(creature_num, &CreatureParams::new());
+        if add_creatures {
+            for creature_num in 0..self.params.num_start_creatures {
+                // Create creature
+                let mut creature = Creature::new(creature_num, &CreatureParams::new());
 
-            // Set few parameters of the new creature
-            let pos = temp_env.get_rand_blank_space();
-            creature.set_position(pos.x, pos.y);
+                // Set few parameters of the new creature
+                let pos = self.get_rand_blank_space().unwrap();
+                creature.set_position(pos.x, pos.y);
 
-            // Set random initial orientation
-            let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
-            let orientation = match orient {
-                0 => CreatureOrientation::Up,
-                1 => CreatureOrientation::Right,
-                2 => CreatureOrientation::Down,
-                3 => CreatureOrientation::Left,
-                _ => panic!("Invalid initial random orientation! Update the number of states"),
-            };
-            creature.set_orientation(orientation);
+                // Set random initial orientation
+                let orient = rng.gen_range(0..NUM_ORIENTATION_STATES);
+                let orientation = match orient {
+                    0 => CreatureOrientation::Up,
+                    1 => CreatureOrientation::Right,
+                    2 => CreatureOrientation::Down,
+                    3 => CreatureOrientation::Left,
+                    _ => panic!("Invalid initial random orientation! Update the number of states"),
+                };
+                creature.set_orientation(orientation);
 
-            // Add it to the board
-            temp_env.add_creature(creature);
+                // Add it to the board
+                self.add_creature(creature);
+            }
         }
 
         // Fill random wall spaces
-        for _wall_num in 0..in_params.num_start_walls {
-            let pos = temp_env.get_rand_blank_space();
-            temp_env.add_wall_space(pos);
+        if add_walls {
+            for _wall_num in 0..self.params.num_start_walls {
+                let pos = self.get_rand_blank_space().unwrap();
+                self.add_wall_space(pos);
+            }
         }
-
-        return temp_env;
 
     }
 
@@ -356,8 +339,8 @@ impl EnvironmentV1 {
     pub fn load_from_json(&mut self, json_contents : &str, load_ops : &JsonEnvLoadParams) {
 
         // Create a temporary instantiation of the environment, so we can pull various things from it
-        let temp_env_res : Result<EnvironmentV1, serde_json::Error>  = serde_json::from_str(&json_contents); 
-        let temp_env : EnvironmentV1;
+        let temp_env_res : Result<Environment, serde_json::Error>  = serde_json::from_str(&json_contents); 
+        let temp_env : Environment;
         match temp_env_res {
             Err(e) => {
                 println!("Error: Could not create `Environment` from JSON. Might mean JSON is incompatible with current version, or is corrupted");
@@ -452,15 +435,24 @@ impl EnvironmentV1 {
 
 
     /// Audit the counters of each space type vs. the position matrix to make sure everything is in sync
+    /// Also take this opportunity to update misc supporting data structures like the reference vector
+    /// of all blank spaces (`blank_spaces`)
     fn update_space_counters(&mut self) {
         let mut temp_food : usize = 0; 
         let mut temp_walls : usize = 0; 
         let mut temp_creatures : usize = 0; 
         let mut temp_blank : usize = 0; 
+
+        // Clear blank space vector to populate it again
+        self.blank_spaces.clear();
+
         for x in 0..self.params.env_x_size {
             for y in 0..self.params.env_y_size {
                 match self.positions[x][y] {
-                    SpaceStates::BlankSpace => temp_blank += 1,
+                    SpaceStates::BlankSpace => {
+                        temp_blank += 1;
+                        self.blank_spaces.push(Position{x: x, y: y});
+                    }
                     SpaceStates::FoodSpace => temp_food += 1,
                     SpaceStates::CreatureSpace(_id) => temp_creatures += 1,
                     SpaceStates::WallSpace => temp_walls += 1,
@@ -668,7 +660,11 @@ impl EnvironmentV1 {
             // If the number of new food is less than 1, then decide whether to add
             // a single food piece treating `avg_new_food_per_day` as a probability
             if rng.gen::<f32>() < self.params.avg_new_food_per_day {
-                self.add_food_space(self.get_rand_blank_space());
+                let pos = self.get_rand_blank_space();
+                match pos {
+                    Some(pos) => self.add_food_space(pos),
+                    None => return,
+                }
             }
         } else {
             // If avg the number of food pieces is greater than 1, then randomly sample from
@@ -677,13 +673,17 @@ impl EnvironmentV1 {
             let max_food = self.params.avg_new_food_per_day * 2.0;
             let num_food = rng.gen_range(0.0..max_food).round() as usize;
             for _ in 0..num_food {
-                self.add_food_space(self.get_rand_blank_space());
+                let pos = self.get_rand_blank_space();
+                match pos {
+                    Some(pos) => self.add_food_space(pos),
+                    None => return,
+                }
             }
         }
     }
 
     /// Add a single food space to the specified location
-    pub fn add_food_space(&mut self, position : CreaturePosition) {
+    pub fn add_food_space(&mut self, position : Position) {
         match self.positions[position.x][position.y] {
             SpaceStates::CreatureSpace(_c) => {
                 println!("Error: Cannot remove creature space to add food space");
@@ -704,7 +704,7 @@ impl EnvironmentV1 {
     }
 
     /// Add a wall space to the specified location
-    pub fn add_wall_space(&mut self, position : CreaturePosition) {
+    pub fn add_wall_space(&mut self, position : Position) {
         match self.positions[position.x][position.y] {
             SpaceStates::CreatureSpace(_c) => {
                 println!("Error: Cannot remove creature space to add wall space");
@@ -717,7 +717,7 @@ impl EnvironmentV1 {
     }
 
     /// Add a blank space (remove whatever is in the specified position except for a creature)
-    pub fn add_blank_space(&mut self, position : CreaturePosition) {
+    pub fn add_blank_space(&mut self, position : Position) {
         match self.positions[position.x][position.y] {
             SpaceStates::CreatureSpace(_c) => {
                 println!("Error: Cannot replace creature space with a blank space");
@@ -956,9 +956,9 @@ impl EnvironmentV1 {
     }
 
     /// Given the current position and action
-    fn get_next_position_for_creature(&self, action : CreatureActions, position : CreaturePosition, orientation : CreatureOrientation) -> CreaturePosition {
+    fn get_next_position_for_creature(&self, action : CreatureActions, position : Position, orientation : CreatureOrientation) -> Position {
         // Now handle the action
-        let mut next_position : CreaturePosition = position;
+        let mut next_position : Position = position;
 
         match orientation {
             CreatureOrientation::Up => {
@@ -1019,7 +1019,7 @@ impl EnvironmentV1 {
     }
 
     /// Get a random blank spot on the board
-    fn get_rand_blank_space(&self) -> CreaturePosition {
+    fn get_rand_blank_space(&self) -> Option<Position> {
         let mut rng = rand::thread_rng();
         let mut done : bool = false;
         let mut found_x: usize = 0;
@@ -1045,19 +1045,19 @@ impl EnvironmentV1 {
 
             // Check loop watchdog
             if attempts > 10_000 {
-                panic!("Error! No blank spaces left in the simulation!");
+                return None;
             }
         }
 
-        return CreaturePosition {
+        return Some(Position {
             x : found_x,
             y : found_y,
-        }
+        })
     }
 
     /// Get a random blank spot centered at the specified position. This is used during creature reproduction
     /// to determine where offspring should be placed
-    fn get_blank_space_at_point(&self, target_pos : CreaturePosition) -> Option<CreaturePosition> {
+    fn get_blank_space_at_point(&self, target_pos : Position) -> Option<Position> {
         let mut rng = rand::thread_rng();
         let mut done : bool = false;
         let mut found_x: usize = 0;
@@ -1107,7 +1107,7 @@ impl EnvironmentV1 {
             }
         }
 
-        return Some(CreaturePosition {
+        return Some(Position {
             x : found_x,
             y : found_y,
         });

@@ -64,7 +64,7 @@ fn main() {
     // of predefined environments that are at least a little interesting. Number zero
     // is always just totally random layout
     let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS);
-    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, Some(starting_env_num));
+    let mut env = Environment::new_rand_from_default(&DEFAULT_PARAMS, Some(starting_env_num));
 
     // Run visualizations forever
     loop {
@@ -106,7 +106,7 @@ fn main() {
         } else {
             env_num = Some(tmp_env_num);
         }
-        env = EnvironmentV1::new_rand_from_default(&DEFAULT_PARAMS, env_num);
+        env = Environment::new_rand_from_default(&DEFAULT_PARAMS, env_num);
         display_env_on_led_panel(&env, &mut driver);
 
         // Once the display is updated, slowly fade in
@@ -120,7 +120,7 @@ fn main() {
 
 
 /// Function to take an environment and display it's existing state
-fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriver) {
+fn display_env_on_led_panel(env : &Environment, driver : &mut RGBLedMatrixDriver) {
     // clear everything first
     driver.clear_buffered_screen();
 
@@ -155,7 +155,7 @@ fn display_env_on_led_panel(env : &EnvironmentV1, driver : &mut RGBLedMatrixDriv
 
 
 /// Display a fading animation that simply dims the display slowly
-fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver, env : &EnvironmentV1) {
+fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver, env : &Environment) {
     let initial_brightness = driver.get_matrix_brightness();
     if initial_brightness == 0 {
         println!("Error: can't perform fade out if display is already off...");
@@ -182,7 +182,7 @@ fn display_fade_out_animation(driver : &mut RGBLedMatrixDriver, env : &Environme
 
 
 /// Display a fade in animation that simply turns up the display brightness slowly
-fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver, env : &EnvironmentV1) {
+fn display_fade_in_animation(driver : &mut RGBLedMatrixDriver, env : &Environment) {
     const TARGET_BRIGHTNESS : u8 = 100; // brightness is specified in percent
     let initial_brightness = driver.get_matrix_brightness();
     let num_steps: u8 = 50;

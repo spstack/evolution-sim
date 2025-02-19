@@ -49,7 +49,7 @@ pub fn run_console_demo_mode() {
     } else {
         env_num = Some(tmp_env_num);
     }
-    let mut env = EnvironmentV1::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, env_num);
+    let mut env = Environment::new_rand_from_default(&DEFAULT_CONSOLE_PARAMS, env_num);
 
     // Run one initial step
     env.advance_step();
@@ -72,7 +72,7 @@ pub fn run_console_demo_mode() {
 
 
 /// Print the current state of the environment board
-pub fn show_env(env : &EnvironmentV1) {
+pub fn show_env(env : &Environment) {
     println!();
     let num_dashes = env.params.env_x_size * 3 + 1;
     println!("{:-<width$}", " ", width = num_dashes); // print horizontal dashes
@@ -122,7 +122,7 @@ fn interactive_console_mode() {
 
     // Allocate the env
     let params = EnvironmentParams::new();
-    let mut env = EnvironmentV1::new_rand(&params);
+    let mut env = Environment::new_rand(&params);
 
     // Show initial state
     env.show();
@@ -157,7 +157,7 @@ fn interactive_console_mode() {
 
 /// Run full simulation until there's no more creatures left
 #[allow(dead_code)]
-fn run_full_sim(env : &mut EnvironmentV1) {
+fn run_full_sim(env : &mut Environment) {
 
     while env.creatures.len() > 0 {
         // Run a sim step

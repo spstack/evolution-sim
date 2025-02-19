@@ -73,7 +73,7 @@ pub enum CreatureInputs {
 const ENABLED_CREATURE_INPUTS : [CreatureInputs; 8] = [Age, Energy, VisionDistance, VisionColorRed, VisionColorGreen, VisionColorBlue, Orientation, LastAction];
 
 #[derive(Copy, Clone, PartialEq, Deserialize, Serialize)]
-pub struct CreaturePosition {
+pub struct Position {
     pub x : usize, // x position of the creature
     pub y : usize, // y position of the creature
 }
@@ -164,7 +164,7 @@ pub struct Creature {
     killed : bool,
 
     /// Current position in 2d coordinates x, y
-    pub position : CreaturePosition,
+    pub position : Position,
 
     /// Current orientation that creature is pointing
     pub orientation : CreatureOrientation,
@@ -209,7 +209,7 @@ impl Creature {
             id : id,
             is_alive : true,
             killed : false,
-            position : CreaturePosition {x : 0, y : 0},
+            position : Position {x : 0, y : 0},
             orientation : DEFAULT_ORIENTATION,
             energy : DEFAULT_ENERGY_LEVEL,
             vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0]), space_type : SpaceStates::BlankSpace},
@@ -233,7 +233,7 @@ impl Creature {
             id : id,
             is_alive : true,
             killed : false,
-            position : CreaturePosition {x : parent.position.x, y : parent.position.y},
+            position : Position {x : parent.position.x, y : parent.position.y},
             orientation : parent.orientation,
             energy : parent.params.starting_energy,
             vision_state : CreatureVisionState {obj_in_view : false, dist : 0, color : CreatureColor::new_from_vec([0,0,0]), space_type : SpaceStates::BlankSpace},
