@@ -22,14 +22,6 @@ use macroquad::ui::{
 // Size of the board
 const SCREEN_SIZE_X : f32 = 950.0;
 const SCREEN_SIZE_Y : f32 = 700.0;
-const NUM_GRID_SQUARES_X : usize = 64;
-const NUM_GRID_SQUARES_Y : usize = 64;
-
-
-// Default environment parameters
-const DEFAULT_START_CREATURES : usize = 150;
-const DEFAULT_START_FOOD : usize = 200;
-const DEFAULT_START_WALLS : usize = 0;
 
 // Stat Panel params
 const STATS_PANEL_WIDTH : f32 = 400.0;
@@ -151,14 +143,8 @@ impl EnvMacroquad {
         // First set the screen size to default. Include the size of the stats panel
         request_new_screen_size(WINDOW_WIDTH_PX, WINDOW_HEIGHT_PX);
 
-        // Initialize environment parameters
-        let mut temp_env_params = EnvironmentParams::new(); 
-        temp_env_params.env_x_size = NUM_GRID_SQUARES_X;
-        temp_env_params.env_y_size = NUM_GRID_SQUARES_Y;
-        temp_env_params.num_start_creatures = DEFAULT_START_CREATURES;
-        temp_env_params.num_start_food = DEFAULT_START_FOOD;
-        temp_env_params.num_start_walls = DEFAULT_START_WALLS;
-        // - the rest of the parameters are just the environment default...
+        // Initialize environment parameters (just use default)
+        let temp_env_params = EnvironmentParams::new(); 
 
         let mut temp_env = EnvMacroquad {
             params : SimParameters {
@@ -195,8 +181,8 @@ impl EnvMacroquad {
             current_draw_space_type : None,
 
             // Environment display params
-            grid_x_size : SCREEN_SIZE_X / (NUM_GRID_SQUARES_X as f32),
-            grid_y_size : SCREEN_SIZE_Y / (NUM_GRID_SQUARES_Y as f32),
+            grid_x_size : SCREEN_SIZE_X / (temp_env_params.env_x_size as f32),
+            grid_y_size : SCREEN_SIZE_Y / (temp_env_params.env_y_size as f32),
 
             // Set position of all info panels 
             stats_panel_x_pos : SCREEN_SIZE_X + PANEL_X_PADDING,

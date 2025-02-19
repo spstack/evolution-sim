@@ -16,6 +16,11 @@ use std::fs::File;
 pub const DEBUG_LEVEL : usize = 0;
 
 // Env parameters
+const DEFAULT_ENV_SIZE_X : usize = 64;
+const DEFAULT_ENV_SIZE_Y : usize = 64;
+const DEFAULT_START_CREATURES : usize = 150;
+const DEFAULT_START_FOOD : usize = 200;
+const DEFAULT_START_WALLS : usize = 150;
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
 pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
 pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
@@ -111,11 +116,11 @@ impl EnvironmentParams {
     /// Return a default version of the parameters
     pub fn new() -> EnvironmentParams {
         EnvironmentParams {
-            env_x_size : 50,
-            env_y_size : 50,
-            num_start_creatures : 100,  
-            num_start_food : 150,
-            num_start_walls : 200,
+            env_x_size : DEFAULT_ENV_SIZE_X,
+            env_y_size : DEFAULT_ENV_SIZE_Y,
+            num_start_creatures : DEFAULT_START_CREATURES,  
+            num_start_food : DEFAULT_START_FOOD,
+            num_start_walls : DEFAULT_START_WALLS,
             energy_per_food_piece : DEFAULT_ENERGY_PER_FOOD_PIECE,
             energy_per_kill : DEFAULT_ENERGY_PER_KILL,
             max_offspring_per_reproduce : DEFAULT_OFFSPRING_PER_REPRODUCE,
@@ -258,6 +263,9 @@ impl Environment {
     /// the constructors
     fn initialize_with_rand_spaces(&mut self, add_food : bool, add_creatures : bool, add_walls : bool) {
         let mut rng = rand::thread_rng();
+
+        // Make sure counters/blank spaces are all up to date
+        self.update_space_counters();
 
         // Fill in random spaces with food
         if add_food {
@@ -490,8 +498,6 @@ impl Environment {
             println!("");
         }
 
-        // Audit the board on every step
-        self.update_space_counters();
 
         // Initialize the random number generator used in this function
         let mut rng = rand::thread_rng();
@@ -649,6 +655,9 @@ impl Environment {
         // Increment the time step counter
         self.time_step += 1;
 
+        // Update space counters every step so everything stays in sync
+        self.update_space_counters();
+
     }
 
     /// Add random number of new food pieces to the board in random locations according to 
@@ -723,7 +732,8 @@ impl Environment {
                 println!("Error: Cannot replace creature space with a blank space");
                 return;
             }
-            _ => (),
+            SpaceStates::BlankSpace => (),
+            _ => self.blank_spaces.push(position),
         } 
         self.positions[position.x][position.y] = SpaceStates::BlankSpace;
     }
@@ -1019,40 +1029,37 @@ impl Environment {
     }
 
     /// Get a random blank spot on the board
-    fn get_rand_blank_space(&self) -> Option<Position> {
+    fn get_rand_blank_space(&mut self) -> Option<Position> {
         let mut rng = rand::thread_rng();
-        let mut done : bool = false;
-        let mut found_x: usize = 0;
-        let mut found_y: usize = 0;
+        // let mut done : bool = false;
+        // let mut found_x: usize = 0;
+        // let mut found_y: usize = 0;
         let mut attempts : usize = 0;
+        const MAX_ATTEMPTS : usize = 100;
+
+        // If there's no blank spaces, just return None
+        if self.blank_spaces.len() == 0 {
+            return None;
+        }
 
         // Loop until we find a blank space
-        while !done {
-            let x = rng.gen_range(0..self.params.env_x_size);
-            let y = rng.gen_range(0..self.params.env_y_size);
-
-            // Only allow overwriting of blank spaces
-            match self.positions[x][y] {
-                SpaceStates::BlankSpace => {
-                    found_x = x;
-                    found_y = y;
-                    done = true;
-                },
+        for _ in 0..MAX_ATTEMPTS {
+            let idx = rng.gen_range(0..self.blank_spaces.len());
+            let pos = self.blank_spaces[idx];
+            let space_type = self.positions[pos.x][pos.y];
+            match space_type {
+                SpaceStates::BlankSpace => return Some(pos),
                 _ => {
-                    attempts += 1;
+                    // Not a blank space, `blank_spaces` vector is inconsistent with `positions` vector.
+                    // Need to update it...
+                    self.blank_spaces.remove(idx);
                 },
-            }
-
-            // Check loop watchdog
-            if attempts > 10_000 {
-                return None;
             }
         }
 
-        return Some(Position {
-            x : found_x,
-            y : found_y,
-        })
+        // Hit the max iterations... something is probably wrong
+        println!("Warning: hit max iterations while trying to find a blank space... something is probably wrong");
+        return None;
     }
 
     /// Get a random blank spot centered at the specified position. This is used during creature reproduction
