@@ -59,7 +59,11 @@ Then the neural net is evaluated, and the creature chooses one output "Action" t
 * Reproduce
 * Kill
 
-If a creature chooses the "kill" action, it will only work if there is another creature directly in front of it. That target creature is automatically consumed for food and the hunting creature is turned a slightly more red color. This color is reflected in the vision of other creatures, so that others can tell the difference between a violent and non-violent creature. This allows for various survival strategies to emerge. The kill action still costs energy regardless of whether it is successful.
+If a creature chooses the "kill" action, it will only work if there is another creature directly in front of it. That target creature is automatically consumed for food. The kill action still costs energy regardless of whether it is successful.
 
+The color of the creatures is also a trait that can be randomly mutated. Whenever a creature reproduces, it's 
+offspring have a small chance to change each RGB component of their color. Across subsequent generations, this
+color can continue to evolve. This kind of results in a way to track similar creatures, although that's not
+really guaranteed because color doesn't directly relate to how similar a creatures DNA is. 
 
 

@@ -34,8 +34,8 @@ pub const DEFAULT_KILL_ENERGY_COST : usize = 1;             // Default amount of
 pub const VISION_NEURON_INVALID_VAL : f32 = -1e6;           // Value that should be applied to a vision input neuron if there's nothing in view
 
 const COLOR_MODE_VIOLENCE : bool = false;                   // Set this switch to `true` to make creature color depend on how violent the creature is rather than just inherited color with random mutation
-const MIN_COLOR_DEVIATION : i8 = -50;                    // Minimum amount each color can change by when reproducing
-const MAX_COLOR_DEVIATION : i8 = 50;                     // Maximum amount each color can change by when reproducing
+const MIN_COLOR_DEVIATION : i8 = -100;                      // Minimum amount each color can change by when reproducing
+const MAX_COLOR_DEVIATION : i8 = 100;                       // Maximum amount each color can change by when reproducing
 
 const DEBUG_LEVEL : usize = 0;                              // Debug print level (higher number = more detail)
 
