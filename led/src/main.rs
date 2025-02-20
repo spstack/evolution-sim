@@ -63,7 +63,7 @@ fn main() {
     // Load a random default environment. This API allows selecting from a numbered list
     // of predefined environments that are at least a little interesting. Number zero
     // is always just totally random layout
-    let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS);
+    let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS + 4); // Plus 4 is arbitrary, but just increases the odds we use a randomly generated environment
     let mut env = Environment::new_rand_from_default(&DEFAULT_PARAMS, Some(starting_env_num));
 
     // Run visualizations forever

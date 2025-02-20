@@ -23,7 +23,7 @@ const DEFAULT_START_FOOD : usize = 200;
 const DEFAULT_START_WALLS : usize = 150;
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
 pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
-pub const DEFAULT_MUTATION_PROB : f32 = 0.03;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
+pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 1.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
@@ -169,7 +169,7 @@ impl Environment {
         match default_env_num {
             Some(val) => {
                 if val > DEFAULT_ENVS.len() {
-                    panic!("Error: Invalid default environment number specified");
+                    env_num = None; // Just set to None to load a random environment
                 }
                 if (in_params.env_x_size != DEFAULT_ENV_COLS) || (in_params.env_y_size != DEFAULT_ENV_ROWS) {
                     println!("Warning: Size of the default JSON environment specified does not match the default environment sizes (nows = {} cols = {})", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
@@ -212,10 +212,7 @@ impl Environment {
 
             // Load random set of walls
             None => {
-                for _wall_num in 0..in_params.num_start_walls {
-                    let pos = temp_env.get_rand_blank_space().unwrap();
-                    temp_env.add_wall_space(pos);
-                }
+                temp_env.procedurally_gen_walls();
             }
         }
 
@@ -268,6 +265,11 @@ impl Environment {
         // Make sure counters/blank spaces are all up to date
         self.update_space_counters();
 
+        // Fill random wall spaces first
+        if add_walls {
+            self.procedurally_gen_walls();
+        }
+
         // Fill in random spaces with food
         if add_food {
             for _food_num in 0..self.params.num_start_food {
@@ -302,13 +304,7 @@ impl Environment {
             }
         }
 
-        // Fill random wall spaces
-        if add_walls {
-            for _wall_num in 0..self.params.num_start_walls {
-                let pos = self.get_rand_blank_space().unwrap();
-                self.add_wall_space(pos);
-            }
-        }
+        
 
     }
 
@@ -493,7 +489,7 @@ impl Environment {
     pub fn advance_step(&mut self) {
 
         // Print some info about the env
-        if DEBUG_LEVEL > 0 {
+        if DEBUG_LEVEL > 1 {
             println!("===================== STEP {} ===============", self.time_step);
             println!("Creatures: {}", self.creatures.len());
             println!("");
@@ -649,7 +645,7 @@ impl Environment {
         self.update_creature_vision();
 
         // If proper debug level show the env after each step
-        if DEBUG_LEVEL > 0 {
+        if DEBUG_LEVEL > 1 {
             self.show();
         }
 
@@ -1127,5 +1123,113 @@ impl Environment {
         return Err("Invalid creature id");
     }
 
+    /// Generate random set of walls in a more interesting way
+    /// Basically ensure that walls are more likely to be connected
+    fn procedurally_gen_walls(&mut self) {
+        const MIN_WALL_SEGMENTS : usize = 5;
+        const MAX_WALL_SEGMENTS : usize = 30;
+        const MIN_SEG_LEN : usize = 1;
+        const MAX_SEG_LEN : usize = 40;
+        const NUM_DIRECTIONS : usize = 8; // 2-D board, there's 8 adjacent spaces including diagonals
+        let mut rng = rand::thread_rng();
+    
+        // Randomly choose number of wall "segments"
+        let num_wall_segments = rng.gen_range(MIN_WALL_SEGMENTS..=MAX_WALL_SEGMENTS);
+
+        if DEBUG_LEVEL > 0 {
+            println!("Num wall segments {}", num_wall_segments);
+        }
+
+        // for each segment choose length and location, then randomly choose directions to travel until complete
+        for _ in 0..num_wall_segments {
+            let seg_len = rng.gen_range(MIN_SEG_LEN..=MAX_SEG_LEN);
+            let mut cur_x = rng.gen_range(0..self.params.env_x_size);
+            let mut cur_y = rng.gen_range(0..self.params.env_y_size);
+
+            if DEBUG_LEVEL > 0 {
+                println!("Segment starting at ({}, {}) with length {}", cur_x, cur_y, seg_len);
+            }
+
+            let mut seg_attempts : usize = 0;
+            let mut walk_len = seg_len;
+            let max_x_idx : usize = self.params.env_x_size - 1;
+            let max_y_idx : usize = self.params.env_y_size - 1;
+            let mut prev_x = 10000; // (just something invalid)
+            let mut prev_y = 10000; // (just something invalid)
+
+            while walk_len > 0 {
+
+                // Add watchdog to ensure we don't hang if something goes horribly wrong...
+                seg_attempts += 1;
+                if seg_attempts > MAX_SEG_LEN * 50 {
+                    // stuck, just stop this segment
+                    break;
+                }
+
+                // randomly choose a direction to travel in
+                let mut next_x = cur_x;
+                let mut next_y = cur_y;
+                let dir_num : usize = rng.gen_range(0..NUM_DIRECTIONS);
+                // Match number to actual direction
+                match dir_num {
+                    // Up
+                    0 if next_y != 0 => next_y -= 1,
+                    // Up-Right
+                    1 if next_y != 0 && next_x < max_x_idx => {
+                        next_y -= 1;
+                        next_x += 1;
+                    },
+                    // Right
+                    2 if next_x < max_x_idx => next_x += 1,
+                    // Right-Down
+                    3 if next_y < max_y_idx && next_x < max_x_idx => {
+                        next_y += 1;
+                        next_x += 1;
+                    },
+                    // Down
+                    4 if next_y < max_y_idx => next_y += 1,
+                    // Down-Left
+                    5 if next_x != 0 && next_y < max_y_idx => {
+                        next_x -= 1;
+                        next_y += 1;
+                    },
+                    // Left
+                    6 if next_x != 0=> next_x -= 1,
+                    // Up-Left
+                    7 if next_x != 0 && next_y != 0 => {
+                        next_x -= 1;
+                        next_y -= 1;
+                    },
+                    _ => continue, // try new direction
+                }
+
+                // Ensure space is free
+                if self.positions[next_x][next_y] != SpaceStates::BlankSpace {
+                    continue;
+                }
+
+                // This is here to try to reduce the chance that the walls "fold" back in on themselves
+                // if we make sure the walls don't travel in the same direction as the previously placed wall
+                // we can kind of ensure that they'll continue forward... at least for one space
+                if next_x == prev_x || next_y == prev_y {
+                    continue;
+                }
+
+                // Create the wall!
+                self.add_wall_space(Position{x: next_x, y: next_y});
+                prev_x = cur_x;
+                prev_y = cur_y;
+                cur_x = next_x;
+                cur_y = next_y;
+                walk_len -= 1;
+
+
+            }
+        }
+    }
+
+
 } 
+
+
 

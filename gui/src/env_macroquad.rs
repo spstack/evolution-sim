@@ -149,7 +149,7 @@ impl EnvMacroquad {
 
         // Start with a randomly selected preset environment
         let mut rng = ::rand::thread_rng();
-        let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS);
+        let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS*2); // the `*2` just ensures that we have an equal chance of generating a random env and default
 
         let mut temp_env = EnvMacroquad {
             params : SimParameters {
