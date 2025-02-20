@@ -6,6 +6,7 @@
  * ===============================================================================*/
 use core_lib::creature::*;
 use core_lib::environment::*;
+use ::rand::Rng;
 use std::io::Write;
 use std::fs::File;
 
@@ -146,6 +147,10 @@ impl EnvMacroquad {
         // Initialize environment parameters (just use default)
         let temp_env_params = EnvironmentParams::new(); 
 
+        // Start with a randomly selected preset environment
+        let mut rng = ::rand::thread_rng();
+        let starting_env_num = rng.gen_range(0..NUM_DEFAULT_ENVS);
+
         let mut temp_env = EnvMacroquad {
             params : SimParameters {
                 env_x_size : String::new(),
@@ -161,7 +166,7 @@ impl EnvMacroquad {
             },
 
             // Generate the environment given the parameters
-            env : Environment::new_rand(&temp_env_params),
+            env : Environment::new_rand_from_default(&temp_env_params, Some(starting_env_num)),
 
             // State
             state : SimState::RUNNING,
@@ -265,7 +270,7 @@ impl EnvMacroquad {
     fn update_sim_display(&self) {
 
         // Draw background
-        // draw_texture_ex(&self.background_texture, 0.0, 0.0, WHITE, self.background_options.clone());
+        draw_texture_ex(&self.background_texture, 0.0, 0.0, WHITE, self.background_options.clone());
 
         // For each simulation space on the board, update with proper piece
         for x in 0..self.env.params.env_x_size {
@@ -367,11 +372,9 @@ impl EnvMacroquad {
             // Otherwise, display a key that shows what each space is
             else {
                 ui.label(None, "GREEN       => Food space");
-                ui.label(None, "BLACK       => Wall space");
-                ui.label(None, "BLUE        => Passive Creature (has not killed)");
-                ui.label(None, "RED         => Violent Creature (turns more red with each kill)");
-                ui.label(None, "LIGHT RED   => Fight space (creature was killed here)")
-
+                ui.label(None, "WHITE       => Wall space");
+                ui.label(None, "LIGHT RED   => Fight space (creature was killed here)");
+                ui.label(None, "(ANY OTHER) => Creature space! (color can change w/ mutations)");
             }
 
 

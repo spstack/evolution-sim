@@ -23,7 +23,7 @@ const DEFAULT_START_FOOD : usize = 200;
 const DEFAULT_START_WALLS : usize = 150;
 pub const DEFAULT_ENERGY_PER_FOOD_PIECE : usize = 40;   // How much energy each piece of food will give a creature
 pub const DEFAULT_ENERGY_PER_KILL : usize = 30;         // How much energy each kill will provide another creature. This is less than the normal food pieces to encourage scavenging as well.
-pub const DEFAULT_MUTATION_PROB : f32 = 0.02;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
+pub const DEFAULT_MUTATION_PROB : f32 = 0.03;           // Default probability that each weight/bias in a creature's DNA will mutate upon reproduction
 pub const NEW_FOOD_PIECES_PER_STEP : f32 = 1.0;         // Average number of new food pieces that should appear in the environment per step (can be less than 1)
 
 // Reproduction params
@@ -163,6 +163,7 @@ impl Environment {
     /// in_params - the input environment parameters to use
     /// default_env_num - which built-in environment to load (Specify None for completely random)
     pub fn new_rand_from_default(in_params : &EnvironmentParams, default_env_num : Option<usize>) -> Environment {
+        let mut env_num = default_env_num;
 
         // Sanity check the inputs
         match default_env_num {
@@ -171,7 +172,8 @@ impl Environment {
                     panic!("Error: Invalid default environment number specified");
                 }
                 if (in_params.env_x_size != DEFAULT_ENV_COLS) || (in_params.env_y_size != DEFAULT_ENV_ROWS) {
-                    panic!("Error: Size of the environment specified does not match the default environment sizes (nows = {} cols = {}", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
+                    println!("Warning: Size of the default JSON environment specified does not match the default environment sizes (nows = {} cols = {})", DEFAULT_ENV_ROWS, DEFAULT_ENV_COLS);
+                    env_num = None; // Set to None to just load a random env
                 }
             },
             None => (), // No bounds checking to be done
@@ -194,7 +196,7 @@ impl Environment {
         };
 
         // Now that we have the temporary env, load the initial layout (only the walls)
-        match default_env_num {
+        match env_num {
             // If specified, load pre-defined environment (only the walls though)
             Some(env_num) => {
                 let default_env_json = DEFAULT_ENVS[env_num];
@@ -210,7 +212,6 @@ impl Environment {
 
             // Load random set of walls
             None => {
-                let mut rng = rand::thread_rng();
                 for _wall_num in 0..in_params.num_start_walls {
                     let pos = temp_env.get_rand_blank_space().unwrap();
                     temp_env.add_wall_space(pos);
@@ -1031,10 +1032,6 @@ impl Environment {
     /// Get a random blank spot on the board
     fn get_rand_blank_space(&mut self) -> Option<Position> {
         let mut rng = rand::thread_rng();
-        // let mut done : bool = false;
-        // let mut found_x: usize = 0;
-        // let mut found_y: usize = 0;
-        let mut attempts : usize = 0;
         const MAX_ATTEMPTS : usize = 100;
 
         // If there's no blank spaces, just return None

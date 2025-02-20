@@ -4240,6 +4240,7 @@
       "BlankSpace"
     ]
   ],
+  "blank_spaces" : [],
   "time_step": 0,
   "num_food": 0,
   "num_creatures": 0,
